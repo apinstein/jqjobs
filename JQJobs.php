@@ -1,4 +1,5 @@
 <?php
+// vim: set expandtab tabstop=4 shiftwidth=4:
 
 /**
  * JQJobs is a job queue infrastructure for PHP.
