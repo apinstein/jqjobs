@@ -1,0 +1,4 @@
+*.tgz
+*.swp
+package.xml
+migrations/version.txt
