@@ -813,6 +813,7 @@ class JQWorker
     protected $okToRun = true;
     protected $pid = NULL;
     protected $jobsProcessed = 0;
+    protected $allIncludedFiles = NULL;
 
     /**
      * Create a JQWorker.
@@ -873,6 +874,7 @@ class JQWorker
         }
         while ($this->okToRun) {
             $this->memCheck();
+            $this->codeCheck();
 
             $nextJob = $this->jqStore->next($this->options['queueName']);
             if ($nextJob)
@@ -937,6 +939,26 @@ class JQWorker
         {
             $this->log("JQWorker doesn't have enough memory remaining ({$remaining}) required for next job ({$this->options['guaranteeMemoryForJob']}).");
             exit(1);
+        }
+    }
+
+    public function codeCheck()
+    {
+        // make sure we have code mod date for every file in use
+        foreach (get_included_files() as $includedFile) {
+            if (!isset($this->allIncludedFiles[$includedFile]))
+            {
+                $this->allIncludedFiles[$includedFile] = filemtime($includedFile);
+            }
+        }
+
+        // check for out-of-date code
+        foreach ($this->allIncludedFiles as $includedFile => $dts) {
+            if ($dts != filemtime($includedFile))
+            {
+                $this->log("JQWorker exiting since we detected updated code in {$includedFile}.");
+                exit(1);
+            }
         }
     }
 
