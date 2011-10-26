@@ -1,5 +1,25 @@
 JQJobs is a job queue infrastructure for PHP.
 
+Features
+
+* Very light-weight and easy-to-use.
+* Supports multiple job types.
+* Supports multiple queues & binding workers to specific queues.
+* Tracks job enqueue time, start time, and finish time.
+* Priority scheduling.
+* Tested in highly-concurrent production environment with over 3M jobs processed over 2+ years.
+* Queue store is architecturally independent of JQJobs; use our JQStore_Array or JQStore_Propel (db) or write your own.
+* Workers automatically pre-flight memory availability and gracefully restart in low-memory situations to avoid OOM's during job processing.
+* Workers automatically check all source code files in use and gracefully restart if any underlying code has been modified.
+* Logs failed job messages.
+* Workers designed to be run under runit or similar process supervisor for maintenance-free operation.
+
+Roadmap
+
+* Automatically detect duplicate job on enqueue and return original job (completed, but not merged)
+* Auto-retry failed jobs
+* Queue admin tool (cli & gui)
+
 The job system has only a few parts:
 
 * JQJob is an interface for a class that does actual work.
