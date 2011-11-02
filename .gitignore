@@ -2,3 +2,5 @@
 *.swp
 package.xml
 migrations/version.txt
+externals
+.pearrc

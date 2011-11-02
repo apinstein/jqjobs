@@ -1,0 +1,18 @@
+To set up a local pear sandbox:
+
+pear channel-discover pearfarm.pearfarm.org
+pear install pearfarm/comice
+
+comice pear-init
+
+comice pear channel-discover apinstein.pearfarm.org
+comice pear channel-discover pear.propelorm.org
+comice pear install apinstein/mp apinstein/propel_generator propel/propel_runtime
+
+# to use propel-gen
+export PHING_COMMAND=`pwd`/externals/pear/phing
+comice exec propel-gen -l
+# comment out these lines in externals/pear/phing
+# Change this to reflect your environment if the default value doesn't work
+#PHP_COMMAND="/usr/bin/php"
+#export PHP_COMMAND 
