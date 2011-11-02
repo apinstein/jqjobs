@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <propel>
+    <datasources default="jqjobs">
+      <datasource id="jqjobs">
+        <adapter>pgsql</adapter> <!-- sqlite, pgsql, myssql, oracle, or pgsql -->
+        <connection>
+          <dsn>pgsql:host=localhost;dbname=jqjobs_test;user=postgres</dsn>
+        </connection>
+      </datasource>
+    </datasources>
+  </propel>
+</config>

@@ -227,6 +227,8 @@ final class JQManagedJob implements JQJob
     /**
      * Used by JQStore to get the persistable representation of the JQManagedJob
      *
+     * @param array Options:
+     *              dtsFormat => default No dts formatting
      * @return array An associative array of the data that needs to be persisted.
      */
     public function toArray($options = array())
@@ -705,7 +707,7 @@ class JQStore_Propel implements JQStore
         $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
         
         $dbJob = new $this->propelClassName;
-        $dbJob->setValuesForKeys($mJob->toArray($this->options['toArrayOptions']));
+        $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
         $dbJob->save($this->con);
 
         $mJob->setJobId($dbJob->getJobId());
@@ -741,7 +743,7 @@ class JQStore_Propel implements JQStore
             if ($dbJob)
             {
                 $nextMJob = new JQManagedJob($this);
-                $nextMJob->fromArray($dbJob->valuesForKeys($nextMJob->persistableFields()));
+                $nextMJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
                 $nextMJob->markJobStarted();
             }
             $this->con->commit();
@@ -771,14 +773,14 @@ class JQStore_Propel implements JQStore
         $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'retrieveByPK'), $jobId, $this->con);
         if (!$dbJob) throw new Exception("Couldn't find jobId {$jobId} in database.");
         $mJob = new JQManagedJob($this);
-        $mJob->fromArray($dbJob->valuesForKeys($mJob->persistableFields()));
+        $mJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
         return $dbJob;
     }
 
     public function save(JQManagedJob $mJob)
     {
         $dbJob = $this->get($mJob->getJobId());
-        $dbJob->setValuesForKeys($mJob->toArray($this->options['toArrayOptions']));
+        $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
         $dbJob->save($this->con);
     }
 

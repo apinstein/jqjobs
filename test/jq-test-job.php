@@ -1,7 +1,5 @@
 <?php
 
-require_once dirname(__FILE__) . '/../JQJobs.php';
-
 class CTestJob implements JQJob
 {
     protected $job;

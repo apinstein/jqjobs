@@ -16,3 +16,9 @@ comice exec propel-gen -l
 # Change this to reflect your environment if the default value doesn't work
 #PHP_COMMAND="/usr/bin/php"
 #export PHP_COMMAND 
+
+# to rebuild propel
+# from project root dir
+comice exec propel-gen propel-build reverse && \
+    php propel-build/fix-schema.php && \
+    comice exec propel-gen propel-build om convert-conf
