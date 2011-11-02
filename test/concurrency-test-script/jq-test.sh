@@ -23,7 +23,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Creating tables..."
-pushd ..
+pushd ../..
 mp -f -V 0
 mp -f -x "pgsql:dbname=${db};user=${dbuser}" -m head
 popd
