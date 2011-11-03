@@ -212,4 +212,20 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $q->count('test'));
         $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
     }
+
+    function testRetry()
+    {
+        // create a queuestore
+        $maxAttempts = 5;
+        $q = new JQStore_Array();
+        $jqjob = $q->enqueue(new SampleFailJob($this), array('queueName' => 'test', 'maxAttempts' => $maxAttempts));
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w->start();
+
+        $this->assertEquals(0, $q->count('test', 'queued'));
+        $this->assertEquals(1, $q->count('test', 'failed'));
+        $this->assertEquals($maxAttempts, $jqjob->getAttemptNumber());
+    }
 }

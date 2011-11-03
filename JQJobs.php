@@ -375,7 +375,7 @@ final class JQManagedJob implements JQJob
         if (!(
                  ($oldStatus === self::STATUS_UNQUEUED && $newStatus === self::STATUS_QUEUED)
                  OR ($oldStatus === self::STATUS_QUEUED && $newStatus === self::STATUS_RUNNING)
-                 OR ($oldStatus === self::STATUS_RUNNING && in_array($newStatus, array(self::STATUS_WAIT_ASYNC, self::STATUS_COMPLETED, self::STATUS_FAILED)))
+                 OR ($oldStatus === self::STATUS_RUNNING && in_array($newStatus, array(self::STATUS_WAIT_ASYNC, self::STATUS_COMPLETED, self::STATUS_FAILED, self::STATUS_QUEUED)))
                  OR ($oldStatus === self::STATUS_WAIT_ASYNC && in_array($newStatus, array(self::STATUS_RUNNING, self::STATUS_COMPLETED, self::STATUS_FAILED)))
             ))
         {

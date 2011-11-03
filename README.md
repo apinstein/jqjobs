@@ -15,11 +15,10 @@ Features
 * Workers automatically check all source code files in use and gracefully restart if any underlying code has been modified.
 * Logs failed job messages.
 * Workers designed to be run under runit or similar process supervisor for maintenance-free operation.
+* Auto-retry failed jobs.
 * Good test coverage.
 
 Roadmap
-
-* Auto-retry failed jobs
 * Queue admin tool (cli & gui)
 
 The job system has only a few parts:
