@@ -60,7 +60,7 @@ interface JQStore
      * Get a JQManagedJob from the JQStore by ID.
      *
      * @param string JobId.
-     * @return object JQStore, or NULL if not found.
+     * @return object JQStoreManagedJob, or NULL if not found.
      */
     function get($jobId);
 

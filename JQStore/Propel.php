@@ -144,25 +144,42 @@ class JQStore_Propel implements JQStore
         }
         return call_user_func(array("{$this->propelClassName}Peer", 'doCount'), $c, false, $this->con);
     }
-    public function get($jobId)
+
+    private function getDbJob($jobId)
     {
         $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'retrieveByPK'), $jobId, $this->con);
         if (!$dbJob) throw new Exception("Couldn't find jobId {$jobId} in database.");
-        $mJob = new JQManagedJob($this);
-        $mJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
         return $dbJob;
     }
 
+    /**
+     * Get a JQManagedJob from the propel store corresponding to the given job id.
+     *
+     * This is basically an unseralizer.
+     */
+    public function get($jobId)
+    {
+        $dbJob = $this->getDbJob($jobId);
+        $mJob = new JQManagedJob($this);
+        $mJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
+        return $mJob;
+    }
+
+    /**
+     * Update our persisted JQManagedJob (which is a propel class) into the DB
+     *
+     * This is basically a serializer.
+     */
     public function save(JQManagedJob $mJob)
     {
-        $dbJob = $this->get($mJob->getJobId());
+        $dbJob = $this->getDbJob($mJob->getJobId());
         $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
         $dbJob->save($this->con);
     }
 
     public function delete(JQManagedJob $mJob)
     {
-        $dbJob = $this->get($mJob->getJobId());
+        $dbJob = $this->getDbJob($mJob->getJobId());
         $dbJob->delete($this->con);
     }
 
@@ -173,5 +190,3 @@ class JQStore_Propel implements JQStore
      */
     public function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
 }
-
-
