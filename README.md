@@ -19,7 +19,6 @@ Features
 
 Roadmap
 
-* Automatically detect duplicate job on enqueue and return original job (completed, but not merged)
 * Auto-retry failed jobs
 * Queue admin tool (cli & gui)
 
