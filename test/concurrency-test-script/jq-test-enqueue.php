@@ -1,7 +1,6 @@
 <?php
 
-require_once dirname(__FILE__) . '/jq-test-shared.php';
-require_once dirname(__FILE__) . '/jq-test-job.php';
+require_once dirname(__FILE__) . '/../TestCommon.php';
 
 if ($argc !== 2) throw new Exception("Pass jobId as only argument. A positive integer.");
 $jobId = (int) $argv[1];

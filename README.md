@@ -7,12 +7,14 @@ Features
 * Supports multiple queues & binding workers to specific queues.
 * Tracks job enqueue time, start time, and finish time.
 * Priority scheduling.
+* Coalescing job support (if a job with the same coalesceId is enqueued, no duplicate job is created; the original is returned). This is basically a lightweight built-in mutex to help you prevent from creating duplicate jobs for the same "thing".
 * Tested in highly-concurrent production environment with over 3M jobs processed over 2+ years.
 * Queue store is architecturally independent of JQJobs; use our JQStore_Array or JQStore_Propel (db) or write your own.
 * Workers automatically pre-flight memory availability and gracefully restart in low-memory situations to avoid OOM's during job processing.
 * Workers automatically check all source code files in use and gracefully restart if any underlying code has been modified.
 * Logs failed job messages.
 * Workers designed to be run under runit or similar process supervisor for maintenance-free operation.
+* Good test coverage.
 
 Roadmap
 

@@ -40,5 +40,5 @@ ${seq_bin} $queuecount | xargs -n 1 -P $concurrency ${php_bin} jq-test-worker.ph
 echo "Displaying leftover jobs (should be 0 if concurrency worked correctly)"
 ${pg_bin_dir}/psql -t -U $dbuser $db -c "select count(*) as unprocessed_job_count from jqstore_managed_job;"
 
-kill $pg_dump_pid
+kill $pg_dump_pid > /dev/null 2>&1 && echo "Killed still-running pg_dump" || echo "pg_dump already finished"
 rm $tmp_backup

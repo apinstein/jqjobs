@@ -26,16 +26,19 @@ abstract class BaseJQStoreManagedJobPeer {
 	const TM_CLASS = 'JQStoreManagedJobTableMap';
 
 	/** The total number of columns. */
-	const NUM_COLUMNS = 11;
+	const NUM_COLUMNS = 12;
 
 	/** The number of lazy-loaded columns. */
 	const NUM_LAZY_LOAD_COLUMNS = 0;
 
 	/** The number of columns to hydrate (NUM_COLUMNS - NUM_LAZY_LOAD_COLUMNS) */
-	const NUM_HYDRATE_COLUMNS = 11;
+	const NUM_HYDRATE_COLUMNS = 12;
 
 	/** the column name for the ATTEMPT_NUMBER field */
 	const ATTEMPT_NUMBER = 'jqstore_managed_job.ATTEMPT_NUMBER';
+
+	/** the column name for the COALESCE_ID field */
+	const COALESCE_ID = 'jqstore_managed_job.COALESCE_ID';
 
 	/** the column name for the CREATION_DTS field */
 	const CREATION_DTS = 'jqstore_managed_job.CREATION_DTS';
@@ -86,12 +89,12 @@ abstract class BaseJQStoreManagedJobPeer {
 	 * e.g. self::$fieldNames[self::TYPE_PHPNAME][0] = 'Id'
 	 */
 	protected static $fieldNames = array (
-		BasePeer::TYPE_PHPNAME => array ('AttemptNumber', 'CreationDts', 'EndDts', 'ErrorMessage', 'Job', 'JobId', 'MaxAttempts', 'Priority', 'QueueName', 'StartDts', 'Status', ),
-		BasePeer::TYPE_STUDLYPHPNAME => array ('attemptNumber', 'creationDts', 'endDts', 'errorMessage', 'job', 'jobId', 'maxAttempts', 'priority', 'queueName', 'startDts', 'status', ),
-		BasePeer::TYPE_COLNAME => array (self::ATTEMPT_NUMBER, self::CREATION_DTS, self::END_DTS, self::ERROR_MESSAGE, self::JOB, self::JOB_ID, self::MAX_ATTEMPTS, self::PRIORITY, self::QUEUE_NAME, self::START_DTS, self::STATUS, ),
-		BasePeer::TYPE_RAW_COLNAME => array ('ATTEMPT_NUMBER', 'CREATION_DTS', 'END_DTS', 'ERROR_MESSAGE', 'JOB', 'JOB_ID', 'MAX_ATTEMPTS', 'PRIORITY', 'QUEUE_NAME', 'START_DTS', 'STATUS', ),
-		BasePeer::TYPE_FIELDNAME => array ('attempt_number', 'creation_dts', 'end_dts', 'error_message', 'job', 'job_id', 'max_attempts', 'priority', 'queue_name', 'start_dts', 'status', ),
-		BasePeer::TYPE_NUM => array (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, )
+		BasePeer::TYPE_PHPNAME => array ('AttemptNumber', 'CoalesceId', 'CreationDts', 'EndDts', 'ErrorMessage', 'Job', 'JobId', 'MaxAttempts', 'Priority', 'QueueName', 'StartDts', 'Status', ),
+		BasePeer::TYPE_STUDLYPHPNAME => array ('attemptNumber', 'coalesceId', 'creationDts', 'endDts', 'errorMessage', 'job', 'jobId', 'maxAttempts', 'priority', 'queueName', 'startDts', 'status', ),
+		BasePeer::TYPE_COLNAME => array (self::ATTEMPT_NUMBER, self::COALESCE_ID, self::CREATION_DTS, self::END_DTS, self::ERROR_MESSAGE, self::JOB, self::JOB_ID, self::MAX_ATTEMPTS, self::PRIORITY, self::QUEUE_NAME, self::START_DTS, self::STATUS, ),
+		BasePeer::TYPE_RAW_COLNAME => array ('ATTEMPT_NUMBER', 'COALESCE_ID', 'CREATION_DTS', 'END_DTS', 'ERROR_MESSAGE', 'JOB', 'JOB_ID', 'MAX_ATTEMPTS', 'PRIORITY', 'QUEUE_NAME', 'START_DTS', 'STATUS', ),
+		BasePeer::TYPE_FIELDNAME => array ('attempt_number', 'coalesce_id', 'creation_dts', 'end_dts', 'error_message', 'job', 'job_id', 'max_attempts', 'priority', 'queue_name', 'start_dts', 'status', ),
+		BasePeer::TYPE_NUM => array (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, )
 	);
 
 	/**
@@ -101,12 +104,12 @@ abstract class BaseJQStoreManagedJobPeer {
 	 * e.g. self::$fieldNames[BasePeer::TYPE_PHPNAME]['Id'] = 0
 	 */
 	protected static $fieldKeys = array (
-		BasePeer::TYPE_PHPNAME => array ('AttemptNumber' => 0, 'CreationDts' => 1, 'EndDts' => 2, 'ErrorMessage' => 3, 'Job' => 4, 'JobId' => 5, 'MaxAttempts' => 6, 'Priority' => 7, 'QueueName' => 8, 'StartDts' => 9, 'Status' => 10, ),
-		BasePeer::TYPE_STUDLYPHPNAME => array ('attemptNumber' => 0, 'creationDts' => 1, 'endDts' => 2, 'errorMessage' => 3, 'job' => 4, 'jobId' => 5, 'maxAttempts' => 6, 'priority' => 7, 'queueName' => 8, 'startDts' => 9, 'status' => 10, ),
-		BasePeer::TYPE_COLNAME => array (self::ATTEMPT_NUMBER => 0, self::CREATION_DTS => 1, self::END_DTS => 2, self::ERROR_MESSAGE => 3, self::JOB => 4, self::JOB_ID => 5, self::MAX_ATTEMPTS => 6, self::PRIORITY => 7, self::QUEUE_NAME => 8, self::START_DTS => 9, self::STATUS => 10, ),
-		BasePeer::TYPE_RAW_COLNAME => array ('ATTEMPT_NUMBER' => 0, 'CREATION_DTS' => 1, 'END_DTS' => 2, 'ERROR_MESSAGE' => 3, 'JOB' => 4, 'JOB_ID' => 5, 'MAX_ATTEMPTS' => 6, 'PRIORITY' => 7, 'QUEUE_NAME' => 8, 'START_DTS' => 9, 'STATUS' => 10, ),
-		BasePeer::TYPE_FIELDNAME => array ('attempt_number' => 0, 'creation_dts' => 1, 'end_dts' => 2, 'error_message' => 3, 'job' => 4, 'job_id' => 5, 'max_attempts' => 6, 'priority' => 7, 'queue_name' => 8, 'start_dts' => 9, 'status' => 10, ),
-		BasePeer::TYPE_NUM => array (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, )
+		BasePeer::TYPE_PHPNAME => array ('AttemptNumber' => 0, 'CoalesceId' => 1, 'CreationDts' => 2, 'EndDts' => 3, 'ErrorMessage' => 4, 'Job' => 5, 'JobId' => 6, 'MaxAttempts' => 7, 'Priority' => 8, 'QueueName' => 9, 'StartDts' => 10, 'Status' => 11, ),
+		BasePeer::TYPE_STUDLYPHPNAME => array ('attemptNumber' => 0, 'coalesceId' => 1, 'creationDts' => 2, 'endDts' => 3, 'errorMessage' => 4, 'job' => 5, 'jobId' => 6, 'maxAttempts' => 7, 'priority' => 8, 'queueName' => 9, 'startDts' => 10, 'status' => 11, ),
+		BasePeer::TYPE_COLNAME => array (self::ATTEMPT_NUMBER => 0, self::COALESCE_ID => 1, self::CREATION_DTS => 2, self::END_DTS => 3, self::ERROR_MESSAGE => 4, self::JOB => 5, self::JOB_ID => 6, self::MAX_ATTEMPTS => 7, self::PRIORITY => 8, self::QUEUE_NAME => 9, self::START_DTS => 10, self::STATUS => 11, ),
+		BasePeer::TYPE_RAW_COLNAME => array ('ATTEMPT_NUMBER' => 0, 'COALESCE_ID' => 1, 'CREATION_DTS' => 2, 'END_DTS' => 3, 'ERROR_MESSAGE' => 4, 'JOB' => 5, 'JOB_ID' => 6, 'MAX_ATTEMPTS' => 7, 'PRIORITY' => 8, 'QUEUE_NAME' => 9, 'START_DTS' => 10, 'STATUS' => 11, ),
+		BasePeer::TYPE_FIELDNAME => array ('attempt_number' => 0, 'coalesce_id' => 1, 'creation_dts' => 2, 'end_dts' => 3, 'error_message' => 4, 'job' => 5, 'job_id' => 6, 'max_attempts' => 7, 'priority' => 8, 'queue_name' => 9, 'start_dts' => 10, 'status' => 11, ),
+		BasePeer::TYPE_NUM => array (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, )
 	);
 
 	/**
@@ -179,6 +182,7 @@ abstract class BaseJQStoreManagedJobPeer {
 	{
 		if (null === $alias) {
 			$criteria->addSelectColumn(JQStoreManagedJobPeer::ATTEMPT_NUMBER);
+			$criteria->addSelectColumn(JQStoreManagedJobPeer::COALESCE_ID);
 			$criteria->addSelectColumn(JQStoreManagedJobPeer::CREATION_DTS);
 			$criteria->addSelectColumn(JQStoreManagedJobPeer::END_DTS);
 			$criteria->addSelectColumn(JQStoreManagedJobPeer::ERROR_MESSAGE);
@@ -191,6 +195,7 @@ abstract class BaseJQStoreManagedJobPeer {
 			$criteria->addSelectColumn(JQStoreManagedJobPeer::STATUS);
 		} else {
 			$criteria->addSelectColumn($alias . '.ATTEMPT_NUMBER');
+			$criteria->addSelectColumn($alias . '.COALESCE_ID');
 			$criteria->addSelectColumn($alias . '.CREATION_DTS');
 			$criteria->addSelectColumn($alias . '.END_DTS');
 			$criteria->addSelectColumn($alias . '.ERROR_MESSAGE');
@@ -409,10 +414,10 @@ abstract class BaseJQStoreManagedJobPeer {
 	public static function getPrimaryKeyHashFromRow($row, $startcol = 0)
 	{
 		// If the PK cannot be derived from the row, return NULL.
-		if ($row[$startcol + 5] === null) {
+		if ($row[$startcol + 6] === null) {
 			return null;
 		}
-		return (string) $row[$startcol + 5];
+		return (string) $row[$startcol + 6];
 	}
 
 	/**
@@ -426,7 +431,7 @@ abstract class BaseJQStoreManagedJobPeer {
 	 */
 	public static function getPrimaryKeyFromRow($row, $startcol = 0)
 	{
-		return (int) $row[$startcol + 5];
+		return (int) $row[$startcol + 6];
 	}
 	
 	/**

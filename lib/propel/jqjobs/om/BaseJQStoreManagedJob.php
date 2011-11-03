@@ -31,6 +31,12 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	protected $attempt_number;
 
 	/**
+	 * The value for the coalesce_id field.
+	 * @var        string
+	 */
+	protected $coalesce_id;
+
+	/**
 	 * The value for the creation_dts field.
 	 * @var        string
 	 */
@@ -112,6 +118,16 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	public function getAttemptNumber()
 	{
 		return $this->attempt_number;
+	}
+
+	/**
+	 * Get the [coalesce_id] column value.
+	 * 
+	 * @return     string
+	 */
+	public function getCoalesceId()
+	{
+		return $this->coalesce_id;
 	}
 
 	/**
@@ -302,6 +318,26 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 
 		return $this;
 	} // setAttemptNumber()
+
+	/**
+	 * Set the value of [coalesce_id] column.
+	 * 
+	 * @param      string $v new value
+	 * @return     JQStoreManagedJob The current object (for fluent API support)
+	 */
+	public function setCoalesceId($v)
+	{
+		if ($v !== null) {
+			$v = (string) $v;
+		}
+
+		if ($this->coalesce_id !== $v) {
+			$this->coalesce_id = $v;
+			$this->modifiedColumns[] = JQStoreManagedJobPeer::COALESCE_ID;
+		}
+
+		return $this;
+	} // setCoalesceId()
 
 	/**
 	 * Sets the value of [creation_dts] column to a normalized version of the date/time value specified.
@@ -542,16 +578,17 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		try {
 
 			$this->attempt_number = ($row[$startcol + 0] !== null) ? (int) $row[$startcol + 0] : null;
-			$this->creation_dts = ($row[$startcol + 1] !== null) ? (string) $row[$startcol + 1] : null;
-			$this->end_dts = ($row[$startcol + 2] !== null) ? (string) $row[$startcol + 2] : null;
-			$this->error_message = ($row[$startcol + 3] !== null) ? (string) $row[$startcol + 3] : null;
-			$this->job = ($row[$startcol + 4] !== null) ? (string) $row[$startcol + 4] : null;
-			$this->job_id = ($row[$startcol + 5] !== null) ? (int) $row[$startcol + 5] : null;
-			$this->max_attempts = ($row[$startcol + 6] !== null) ? (int) $row[$startcol + 6] : null;
-			$this->priority = ($row[$startcol + 7] !== null) ? (int) $row[$startcol + 7] : null;
-			$this->queue_name = ($row[$startcol + 8] !== null) ? (string) $row[$startcol + 8] : null;
-			$this->start_dts = ($row[$startcol + 9] !== null) ? (string) $row[$startcol + 9] : null;
-			$this->status = ($row[$startcol + 10] !== null) ? (string) $row[$startcol + 10] : null;
+			$this->coalesce_id = ($row[$startcol + 1] !== null) ? (string) $row[$startcol + 1] : null;
+			$this->creation_dts = ($row[$startcol + 2] !== null) ? (string) $row[$startcol + 2] : null;
+			$this->end_dts = ($row[$startcol + 3] !== null) ? (string) $row[$startcol + 3] : null;
+			$this->error_message = ($row[$startcol + 4] !== null) ? (string) $row[$startcol + 4] : null;
+			$this->job = ($row[$startcol + 5] !== null) ? (string) $row[$startcol + 5] : null;
+			$this->job_id = ($row[$startcol + 6] !== null) ? (int) $row[$startcol + 6] : null;
+			$this->max_attempts = ($row[$startcol + 7] !== null) ? (int) $row[$startcol + 7] : null;
+			$this->priority = ($row[$startcol + 8] !== null) ? (int) $row[$startcol + 8] : null;
+			$this->queue_name = ($row[$startcol + 9] !== null) ? (string) $row[$startcol + 9] : null;
+			$this->start_dts = ($row[$startcol + 10] !== null) ? (string) $row[$startcol + 10] : null;
+			$this->status = ($row[$startcol + 11] !== null) ? (string) $row[$startcol + 11] : null;
 			$this->resetModified();
 
 			$this->setNew(false);
@@ -560,7 +597,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				$this->ensureConsistency();
 			}
 
-			return $startcol + 11; // 11 = JQStoreManagedJobPeer::NUM_HYDRATE_COLUMNS.
+			return $startcol + 12; // 12 = JQStoreManagedJobPeer::NUM_HYDRATE_COLUMNS.
 
 		} catch (Exception $e) {
 			throw new PropelException("Error populating JQStoreManagedJob object", $e);
@@ -781,6 +818,9 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		if ($this->isColumnModified(JQStoreManagedJobPeer::ATTEMPT_NUMBER)) {
 			$modifiedColumns[':p' . $index++]  = 'ATTEMPT_NUMBER';
 		}
+		if ($this->isColumnModified(JQStoreManagedJobPeer::COALESCE_ID)) {
+			$modifiedColumns[':p' . $index++]  = 'COALESCE_ID';
+		}
 		if ($this->isColumnModified(JQStoreManagedJobPeer::CREATION_DTS)) {
 			$modifiedColumns[':p' . $index++]  = 'CREATION_DTS';
 		}
@@ -824,6 +864,9 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				switch ($columnName) {
 					case 'ATTEMPT_NUMBER':
 						$stmt->bindValue($identifier, $this->attempt_number, PDO::PARAM_INT);
+						break;
+					case 'COALESCE_ID':
+						$stmt->bindValue($identifier, $this->coalesce_id, PDO::PARAM_STR);
 						break;
 					case 'CREATION_DTS':
 						$stmt->bindValue($identifier, $this->creation_dts, PDO::PARAM_STR);
@@ -982,33 +1025,36 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				return $this->getAttemptNumber();
 				break;
 			case 1:
-				return $this->getCreationDts();
+				return $this->getCoalesceId();
 				break;
 			case 2:
-				return $this->getEndDts();
+				return $this->getCreationDts();
 				break;
 			case 3:
-				return $this->getErrorMessage();
+				return $this->getEndDts();
 				break;
 			case 4:
-				return $this->getJob();
+				return $this->getErrorMessage();
 				break;
 			case 5:
-				return $this->getJobId();
+				return $this->getJob();
 				break;
 			case 6:
-				return $this->getMaxAttempts();
+				return $this->getJobId();
 				break;
 			case 7:
-				return $this->getPriority();
+				return $this->getMaxAttempts();
 				break;
 			case 8:
-				return $this->getQueueName();
+				return $this->getPriority();
 				break;
 			case 9:
-				return $this->getStartDts();
+				return $this->getQueueName();
 				break;
 			case 10:
+				return $this->getStartDts();
+				break;
+			case 11:
 				return $this->getStatus();
 				break;
 			default:
@@ -1040,16 +1086,17 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		$keys = JQStoreManagedJobPeer::getFieldNames($keyType);
 		$result = array(
 			$keys[0] => $this->getAttemptNumber(),
-			$keys[1] => $this->getCreationDts(),
-			$keys[2] => $this->getEndDts(),
-			$keys[3] => $this->getErrorMessage(),
-			$keys[4] => $this->getJob(),
-			$keys[5] => $this->getJobId(),
-			$keys[6] => $this->getMaxAttempts(),
-			$keys[7] => $this->getPriority(),
-			$keys[8] => $this->getQueueName(),
-			$keys[9] => $this->getStartDts(),
-			$keys[10] => $this->getStatus(),
+			$keys[1] => $this->getCoalesceId(),
+			$keys[2] => $this->getCreationDts(),
+			$keys[3] => $this->getEndDts(),
+			$keys[4] => $this->getErrorMessage(),
+			$keys[5] => $this->getJob(),
+			$keys[6] => $this->getJobId(),
+			$keys[7] => $this->getMaxAttempts(),
+			$keys[8] => $this->getPriority(),
+			$keys[9] => $this->getQueueName(),
+			$keys[10] => $this->getStartDts(),
+			$keys[11] => $this->getStatus(),
 		);
 		return $result;
 	}
@@ -1085,33 +1132,36 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				$this->setAttemptNumber($value);
 				break;
 			case 1:
-				$this->setCreationDts($value);
+				$this->setCoalesceId($value);
 				break;
 			case 2:
-				$this->setEndDts($value);
+				$this->setCreationDts($value);
 				break;
 			case 3:
-				$this->setErrorMessage($value);
+				$this->setEndDts($value);
 				break;
 			case 4:
-				$this->setJob($value);
+				$this->setErrorMessage($value);
 				break;
 			case 5:
-				$this->setJobId($value);
+				$this->setJob($value);
 				break;
 			case 6:
-				$this->setMaxAttempts($value);
+				$this->setJobId($value);
 				break;
 			case 7:
-				$this->setPriority($value);
+				$this->setMaxAttempts($value);
 				break;
 			case 8:
-				$this->setQueueName($value);
+				$this->setPriority($value);
 				break;
 			case 9:
-				$this->setStartDts($value);
+				$this->setQueueName($value);
 				break;
 			case 10:
+				$this->setStartDts($value);
+				break;
+			case 11:
 				$this->setStatus($value);
 				break;
 		} // switch()
@@ -1139,16 +1189,17 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		$keys = JQStoreManagedJobPeer::getFieldNames($keyType);
 
 		if (array_key_exists($keys[0], $arr)) $this->setAttemptNumber($arr[$keys[0]]);
-		if (array_key_exists($keys[1], $arr)) $this->setCreationDts($arr[$keys[1]]);
-		if (array_key_exists($keys[2], $arr)) $this->setEndDts($arr[$keys[2]]);
-		if (array_key_exists($keys[3], $arr)) $this->setErrorMessage($arr[$keys[3]]);
-		if (array_key_exists($keys[4], $arr)) $this->setJob($arr[$keys[4]]);
-		if (array_key_exists($keys[5], $arr)) $this->setJobId($arr[$keys[5]]);
-		if (array_key_exists($keys[6], $arr)) $this->setMaxAttempts($arr[$keys[6]]);
-		if (array_key_exists($keys[7], $arr)) $this->setPriority($arr[$keys[7]]);
-		if (array_key_exists($keys[8], $arr)) $this->setQueueName($arr[$keys[8]]);
-		if (array_key_exists($keys[9], $arr)) $this->setStartDts($arr[$keys[9]]);
-		if (array_key_exists($keys[10], $arr)) $this->setStatus($arr[$keys[10]]);
+		if (array_key_exists($keys[1], $arr)) $this->setCoalesceId($arr[$keys[1]]);
+		if (array_key_exists($keys[2], $arr)) $this->setCreationDts($arr[$keys[2]]);
+		if (array_key_exists($keys[3], $arr)) $this->setEndDts($arr[$keys[3]]);
+		if (array_key_exists($keys[4], $arr)) $this->setErrorMessage($arr[$keys[4]]);
+		if (array_key_exists($keys[5], $arr)) $this->setJob($arr[$keys[5]]);
+		if (array_key_exists($keys[6], $arr)) $this->setJobId($arr[$keys[6]]);
+		if (array_key_exists($keys[7], $arr)) $this->setMaxAttempts($arr[$keys[7]]);
+		if (array_key_exists($keys[8], $arr)) $this->setPriority($arr[$keys[8]]);
+		if (array_key_exists($keys[9], $arr)) $this->setQueueName($arr[$keys[9]]);
+		if (array_key_exists($keys[10], $arr)) $this->setStartDts($arr[$keys[10]]);
+		if (array_key_exists($keys[11], $arr)) $this->setStatus($arr[$keys[11]]);
 	}
 
 	/**
@@ -1161,6 +1212,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		$criteria = new Criteria(JQStoreManagedJobPeer::DATABASE_NAME);
 
 		if ($this->isColumnModified(JQStoreManagedJobPeer::ATTEMPT_NUMBER)) $criteria->add(JQStoreManagedJobPeer::ATTEMPT_NUMBER, $this->attempt_number);
+		if ($this->isColumnModified(JQStoreManagedJobPeer::COALESCE_ID)) $criteria->add(JQStoreManagedJobPeer::COALESCE_ID, $this->coalesce_id);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::CREATION_DTS)) $criteria->add(JQStoreManagedJobPeer::CREATION_DTS, $this->creation_dts);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::END_DTS)) $criteria->add(JQStoreManagedJobPeer::END_DTS, $this->end_dts);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::ERROR_MESSAGE)) $criteria->add(JQStoreManagedJobPeer::ERROR_MESSAGE, $this->error_message);
@@ -1234,6 +1286,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	public function copyInto($copyObj, $deepCopy = false, $makeNew = true)
 	{
 		$copyObj->setAttemptNumber($this->getAttemptNumber());
+		$copyObj->setCoalesceId($this->getCoalesceId());
 		$copyObj->setCreationDts($this->getCreationDts());
 		$copyObj->setEndDts($this->getEndDts());
 		$copyObj->setErrorMessage($this->getErrorMessage());
@@ -1293,6 +1346,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	public function clear()
 	{
 		$this->attempt_number = null;
+		$this->coalesce_id = null;
 		$this->creation_dts = null;
 		$this->end_dts = null;
 		$this->error_message = null;

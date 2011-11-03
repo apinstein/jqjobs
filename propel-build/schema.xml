@@ -3,6 +3,7 @@
 <database name="jqjobs" defaultIdMethod="native">
   <table name="jqstore_managed_job" phpName="JQStoreManagedJob" idMethod="native">
     <column name="attempt_number" phpName="AttemptNumber" type="INTEGER" required="false"/>
+    <column name="coalesce_id" phpName="CoalesceId" type="VARCHAR" size="100" required="false" defaultValue="NULL"/>
     <column name="creation_dts" phpName="CreationDts" type="TIMESTAMP" required="false"/>
     <column name="end_dts" phpName="EndDts" type="TIMESTAMP" required="false"/>
     <column name="error_message" phpName="ErrorMessage" type="LONGVARCHAR" required="false"/>
@@ -13,6 +14,9 @@
     <column name="queue_name" phpName="QueueName" type="LONGVARCHAR" required="false"/>
     <column name="start_dts" phpName="StartDts" type="TIMESTAMP" required="false"/>
     <column name="status" phpName="Status" type="LONGVARCHAR" required="false"/>
+    <unique name="idx_jqstore_managed_job_coalesce">
+      <unique-column name="coalesce_id"/>
+    </unique>
   </table>
   
 </database>

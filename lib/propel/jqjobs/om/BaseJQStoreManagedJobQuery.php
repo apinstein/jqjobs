@@ -7,6 +7,7 @@
  * 
  *
  * @method     JQStoreManagedJobQuery orderByAttemptNumber($order = Criteria::ASC) Order by the attempt_number column
+ * @method     JQStoreManagedJobQuery orderByCoalesceId($order = Criteria::ASC) Order by the coalesce_id column
  * @method     JQStoreManagedJobQuery orderByCreationDts($order = Criteria::ASC) Order by the creation_dts column
  * @method     JQStoreManagedJobQuery orderByEndDts($order = Criteria::ASC) Order by the end_dts column
  * @method     JQStoreManagedJobQuery orderByErrorMessage($order = Criteria::ASC) Order by the error_message column
@@ -19,6 +20,7 @@
  * @method     JQStoreManagedJobQuery orderByStatus($order = Criteria::ASC) Order by the status column
  *
  * @method     JQStoreManagedJobQuery groupByAttemptNumber() Group by the attempt_number column
+ * @method     JQStoreManagedJobQuery groupByCoalesceId() Group by the coalesce_id column
  * @method     JQStoreManagedJobQuery groupByCreationDts() Group by the creation_dts column
  * @method     JQStoreManagedJobQuery groupByEndDts() Group by the end_dts column
  * @method     JQStoreManagedJobQuery groupByErrorMessage() Group by the error_message column
@@ -38,6 +40,7 @@
  * @method     JQStoreManagedJob findOneOrCreate(PropelPDO $con = null) Return the first JQStoreManagedJob matching the query, or a new JQStoreManagedJob object populated from the query conditions when no match is found
  *
  * @method     JQStoreManagedJob findOneByAttemptNumber(int $attempt_number) Return the first JQStoreManagedJob filtered by the attempt_number column
+ * @method     JQStoreManagedJob findOneByCoalesceId(string $coalesce_id) Return the first JQStoreManagedJob filtered by the coalesce_id column
  * @method     JQStoreManagedJob findOneByCreationDts(string $creation_dts) Return the first JQStoreManagedJob filtered by the creation_dts column
  * @method     JQStoreManagedJob findOneByEndDts(string $end_dts) Return the first JQStoreManagedJob filtered by the end_dts column
  * @method     JQStoreManagedJob findOneByErrorMessage(string $error_message) Return the first JQStoreManagedJob filtered by the error_message column
@@ -50,6 +53,7 @@
  * @method     JQStoreManagedJob findOneByStatus(string $status) Return the first JQStoreManagedJob filtered by the status column
  *
  * @method     array findByAttemptNumber(int $attempt_number) Return JQStoreManagedJob objects filtered by the attempt_number column
+ * @method     array findByCoalesceId(string $coalesce_id) Return JQStoreManagedJob objects filtered by the coalesce_id column
  * @method     array findByCreationDts(string $creation_dts) Return JQStoreManagedJob objects filtered by the creation_dts column
  * @method     array findByEndDts(string $end_dts) Return JQStoreManagedJob objects filtered by the end_dts column
  * @method     array findByErrorMessage(string $error_message) Return JQStoreManagedJob objects filtered by the error_message column
@@ -148,7 +152,7 @@ abstract class BaseJQStoreManagedJobQuery extends ModelCriteria
 	 */
 	protected function findPkSimple($key, $con)
 	{
-		$sql = 'SELECT ATTEMPT_NUMBER, CREATION_DTS, END_DTS, ERROR_MESSAGE, JOB, JOB_ID, MAX_ATTEMPTS, PRIORITY, QUEUE_NAME, START_DTS, STATUS FROM jqstore_managed_job WHERE JOB_ID = :p0';
+		$sql = 'SELECT ATTEMPT_NUMBER, COALESCE_ID, CREATION_DTS, END_DTS, ERROR_MESSAGE, JOB, JOB_ID, MAX_ATTEMPTS, PRIORITY, QUEUE_NAME, START_DTS, STATUS FROM jqstore_managed_job WHERE JOB_ID = :p0';
 		try {
 			$stmt = $con->prepare($sql);
 			$stmt->bindValue(':p0', $key, PDO::PARAM_INT);
@@ -271,6 +275,34 @@ abstract class BaseJQStoreManagedJobQuery extends ModelCriteria
 			}
 		}
 		return $this->addUsingAlias(JQStoreManagedJobPeer::ATTEMPT_NUMBER, $attemptNumber, $comparison);
+	}
+
+	/**
+	 * Filter the query on the coalesce_id column
+	 *
+	 * Example usage:
+	 * <code>
+	 * $query->filterByCoalesceId('fooValue');   // WHERE coalesce_id = 'fooValue'
+	 * $query->filterByCoalesceId('%fooValue%'); // WHERE coalesce_id LIKE '%fooValue%'
+	 * </code>
+	 *
+	 * @param     string $coalesceId The value to use as filter.
+	 *              Accepts wildcards (* and % trigger a LIKE)
+	 * @param     string $comparison Operator to use for the column comparison, defaults to Criteria::EQUAL
+	 *
+	 * @return    JQStoreManagedJobQuery The current query, for fluid interface
+	 */
+	public function filterByCoalesceId($coalesceId = null, $comparison = null)
+	{
+		if (null === $comparison) {
+			if (is_array($coalesceId)) {
+				$comparison = Criteria::IN;
+			} elseif (preg_match('/[\%\*]/', $coalesceId)) {
+				$coalesceId = str_replace('*', '%', $coalesceId);
+				$comparison = Criteria::LIKE;
+			}
+		}
+		return $this->addUsingAlias(JQStoreManagedJobPeer::COALESCE_ID, $coalesceId, $comparison);
 	}
 
 	/**

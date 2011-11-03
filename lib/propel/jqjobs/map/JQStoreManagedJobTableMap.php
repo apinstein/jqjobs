@@ -40,6 +40,7 @@ class JQStoreManagedJobTableMap extends TableMap
 		$this->setPrimaryKeyMethodInfo('jqstore_managed_job_job_id_seq');
 		// columns
 		$this->addColumn('ATTEMPT_NUMBER', 'AttemptNumber', 'INTEGER', false, null, null);
+		$this->addColumn('COALESCE_ID', 'CoalesceId', 'VARCHAR', false, 100, null);
 		$this->addColumn('CREATION_DTS', 'CreationDts', 'TIMESTAMP', false, null, null);
 		$this->addColumn('END_DTS', 'EndDts', 'TIMESTAMP', false, null, null);
 		$this->addColumn('ERROR_MESSAGE', 'ErrorMessage', 'LONGVARCHAR', false, null, null);

@@ -98,6 +98,21 @@ interface JQJob
      * @return string
      */
     function description();
+
+    /**
+     * A unique ID for the job.
+     *
+     * If NULL, the job will not be subject to coalescing.
+     *
+     * If NOT NULL, the job will not be queued if there already exist a job for the provided coalesceId.
+     *
+     * The scope for coalesceId is Application. Thus an application needs to take care to prevent collisions of the coalesceId across jobs of different types.
+     *
+     * The recommended way to do that is to prefix the coalesceId with the class name of the job.
+     *
+     * @return string
+     */
+    function coalesceId();
 }
 
 /**
@@ -164,6 +179,10 @@ final class JQManagedJob implements JQJob
      * @var object JQJob
      */
     protected $job;
+    /**
+     * @var string coalesceId Duplicate jobs in the same queueName with the same coalesceId are not allowed. enqueue() will succeed, but will return the existing job.
+     */
+    protected $coalesceId;
 
     /**
      * @var boolean An internal lock to prevent a job from being run multiple times. Probably overkill?
@@ -217,6 +236,7 @@ final class JQManagedJob implements JQJob
             'status',
             'queueName',
             'job',
+            'coalesceId',
             'maxAttempts',
             'attemptNumber',
             'priority',
@@ -311,6 +331,11 @@ final class JQManagedJob implements JQJob
     public function setJobId($jobId)
     {
         $this->jobId = $jobId;
+    }
+
+    public function setCoalesceId($coalesceId)
+    {
+        $this->coalesceId = $coalesceId;
     }
 
     public function getJobId()
@@ -506,6 +531,14 @@ final class JQManagedJob implements JQJob
     /**
      * @see JQJob
      */
+    public function coalesceId()
+    {
+        return $this->job->coalesceId();
+    }
+
+    /**
+     * @see JQJob
+     */
     public function cleanup()
     {
         $this->job->cleanup();
@@ -563,6 +596,20 @@ interface JQStore
     function next($queueName = null);
 
     /**
+     * See if there is already a job for the given coalesceId in the queue.
+     *
+     * Don't forget that in the present implementation, successful jobs are deleted (and thus the same job can run again once successfully completed)
+     * but that failed jobs are kept, meaning that you cannot re-run the job until the failed job is deleted manually.
+     *
+     * Notes for implementer: A NULL coalesceId should always return NULL.
+     * Notes for implementer: Your enqueue() function should call this to find existing jobs. Think about the concurrency consequences of this.
+     *
+     * @param string The coalesceId to check for.
+     * @return object JQManagedJob
+     */
+    function existsJobForCoalesceId($coalesceId);
+
+    /**
      * Count the jobs in the given queue with the given status (any).
      *
      * @param string Queue name (NULL = default queue)
@@ -617,13 +664,38 @@ class JQStore_Array implements JQStore
 
     public function enqueue(JQJob $job, $options = array())
     {
+        if (!is_null($job->coalesceId()))
+        {
+            $existingManagedJob = $this->existsJobForCoalesceId($job->coalesceId());
+            if ($existingManagedJob)
+            {
+                return $existingManagedJob;
+            }
+        }
+
         $mJob = new JQManagedJob($this, $options);
         $mJob->setJob($job);
+        $mJob->setCoalesceId($job->coalesceId());
         $mJob->setJobId($this->jobId);
         $this->queue[$this->jobId] = $mJob;
         $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
         $this->jobId++;
         return $mJob;
+    }
+
+    public function existsJobForCoalesceId($coalesceId)
+    {
+        if ($coalesceId === NULL)
+        {
+            return NULL;
+        }
+
+        foreach ($this->queue as $mJob) {
+            $mJobId = $mJob->coalesceId();
+            if ((string) $mJob->coalesceId() === (string) $coalesceId) return $mJob;
+        }
+
+        return NULL;
     }
 
     public function next($queueName = NULL)
@@ -684,6 +756,7 @@ class JQStore_Propel implements JQStore
         $this->options = array_merge(array(
                                             'tableName'                 => 'JQStoreManagedJob',
                                             'jobIdColName'              => 'JOB_ID',
+                                            'jobCoalesceIdColName'      => 'COALESCE_ID',
                                             'jobQueueNameColName'       => 'QUEUE_NAME',
                                             'jobStatusColName'          => 'STATUS',
                                             'jobPriorityColName'        => 'PRIORITY',
@@ -702,17 +775,54 @@ class JQStore_Propel implements JQStore
 
     public function enqueue(JQJob $job, $options = array())
     {
-        $mJob = new JQManagedJob($this, $options);
-        $mJob->setJob($job);
-        $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
-        
-        $dbJob = new $this->propelClassName;
-        $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
-        $dbJob->save($this->con);
-
-        $mJob->setJobId($dbJob->getJobId());
+        $mJob = NULL;
+ 
+        $this->con->beginTransaction();
+        try {
+            // lock the table so we can be sure to get mutex to safely enqueue job without risk of having a colliding coalesceId.
+            // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
+            // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
+            // theoretically this lock should prevent the unique index from ever tripping.
+            $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode;";
+            $this->con->query($lockSql);
+ 
+            // look for coalesceId collision
+            $mJob = $this->existsJobForCoalesceId($job->coalesceId());
+            if (!$mJob)
+            {
+                // create a new job
+                $mJob = new JQManagedJob($this, $options);
+                $mJob->setJob($job);
+                $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
+                
+                $dbJob = new $this->propelClassName;
+                $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
+                $dbJob->save($this->con);
+ 
+                $mJob->setJobId($dbJob->getJobId());
+            }
+ 
+            $this->con->commit();
+        } catch (PropelException $e) {
+            $this->con->rollback();
+            throw $e;
+        }
 
         return $mJob;
+    }
+    
+    public function existsJobForCoalesceId($coalesceId)
+    {
+        if ($coalesceId === NULL)
+        {
+            return NULL;
+        }
+
+        $c = new Criteria;
+        $c->add($this->options['jobCoalesceIdColName'], $coalesceId);
+        $existingJob = call_user_func_array(array("{$this->propelClassName}Peer", 'doSelectOne'), $c, $this->con);
+
+        return $existingJob;
     }
 
     public function next($queueName = NULL)
@@ -856,6 +966,12 @@ class JQWorker
         if ($verboseOnly and !$this->options['verbose']) return;
         print "[{$this->pid}] {$msg}\n";
     }
+
+    public function jobsProcessed()
+    {
+        return $this->jobsProcessed;
+    }
+
 
     /**
      * Starts the worker process.

@@ -1,6 +1,6 @@
 <?php
 
-require_once dirname(__FILE__) . '/../JQJobs.php';
+require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQJobsTest extends PHPUnit_Framework_TestCase
 {
@@ -34,7 +34,47 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @testdox Test JQJobs catches fatal PHP errors during job execution and marks job as failed.
+     * @testdox JQJobs deletes successfully deleted jobs
+     */
+    function testDeleteSuccessfulJobs()
+    {
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        // Add jobs
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+        }
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w->start();
+
+        $this->assertEquals(0, $q->count('test'), "JQJobs didn't seem to automatically remove completed jobs.");
+    }
+
+    /**
+     * @testdox JQJobs does not delete failed jobs
+     */
+    function testDoNotDeleteFailedJobs()
+    {
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        // Add jobs
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new SampleFailJob($this), array('queueName' => 'test'));
+        }
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w->start();
+
+        $this->assertEquals(10, $q->count('test'), "JQJobs didn't seem to leave intact failed jobs.");
+    }
+
+    /**
+     * @testdox Test JQJobs catches fatal PHP errors during job execution and marks job as failed
      */
     function testJqJobsCatchesPHPErrorDuringJob()
     {
@@ -90,22 +130,60 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(10, $this->counter);
         $this->assertEquals(0, $q->count('test'));
     }
-}
 
-class SampleJob implements JQJob
-{
-    function __construct($info) { $this->info = $info; }
-    function run() { $this->info->counter++; } // no-op
-    function cleanup() { }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
-    function description() { return "Sample job"; }
-}
+    /**
+     * @testdox JQJobs does not attempt to coalesce a job with a NULL coalesceId
+     */
+    function testJobsWithNullCoalesceIdAreNotCoalesced()
+    {
+        $qMock = $this->getMock('JQStore_Array', array('existsJobForCoalesceId'));
+        $qMock->expects($this->never())
+                            ->method('existsJobForCoalesceId')
+                            ;
 
-class SampleFailJob implements JQJob
-{
-    function __construct($info) { $this->info = $info; }
-    function run() { trigger_error("something went boom", E_USER_ERROR); }
-    function cleanup() { }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
-    function description() { return "Sample FAIL job"; }
+        $qMock->enqueue(new SampleCoalescingJob(NULL), array('queueName' => 'test'));
+    }
+
+    /**
+     * @testdox JQJobs attempts to coalesce jobs if coalesceId is non-null
+     */
+    function testJobsWithNonNullCoalesceIdAreCoalesced()
+    {
+        $coalesceId = 1234;
+
+        $qMock = $this->getMock('JQStore_Array', array('existsJobForCoalesceId'));
+        $qMock->expects($this->once())
+                            ->method('existsJobForCoalesceId')
+                            ->with($coalesceId)
+                            ;
+
+        $qMock->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
+    }
+    /**
+     * @testdox JQJobs queues a coalescing job normally if there is no existing coalesceId
+     */
+    function testCoalescingJobsEnqueueLikeNormalIfNoExistingJob()
+    {
+        $q = new JQStore_Array();
+
+        $q->enqueue(new SampleJob($this, 1), array('queueName' => 'test'));
+
+        $this->assertEquals(1, $q->count('test'));
+    }
+    /**
+     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
+     */
+    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
+    {
+        $q = new JQStore_Array();
+
+        $coalesceId = 1234;
+
+        $firstJobEnqueued = $q->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
+        $this->assertEquals(1, $q->count('test'));
+
+        $secondJobEnqueued = $q->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
+        $this->assertEquals(1, $q->count('test'));
+        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
+    }
 }

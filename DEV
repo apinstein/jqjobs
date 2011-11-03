@@ -8,6 +8,8 @@ comice pear-init
 comice pear channel-discover apinstein.pearfarm.org
 comice pear channel-discover pear.propelorm.org
 comice pear install apinstein/mp apinstein/propel_generator propel/propel_runtime
+comice pear channel-discover pear.phpunit.de
+comice pear install phpunit/PHPUnit
 
 # to use propel-gen
 export PHING_COMMAND=`pwd`/externals/pear/phing
@@ -16,6 +18,10 @@ comice exec propel-gen -l
 # Change this to reflect your environment if the default value doesn't work
 #PHP_COMMAND="/usr/bin/php"
 #export PHP_COMMAND 
+
+# build db
+createdb -U postgres jqjobs_test
+comice exec mp -x'pgsql:dbname=jqjobs_test;user=postgres;host=localhost' -r -m head
 
 # to rebuild propel
 # from project root dir
