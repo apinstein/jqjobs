@@ -28,10 +28,11 @@
  * class SampleJob implements JQJob
  * {
  *     function __construct($info) { $this->info = $info; }
- *     function run() { print $this->description() . "\n"; } // no-op
+ *     function run(JQManagedJob $mJob) { print $this->description() . "\n"; } // no-op
  *     function cleanup() { print "cleanup() {$this->description()}\n"; }
  *     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) { print "SampleJob [Job {$mJob->getJobId()}] {$oldStatus} ==> {$mJob->getStatus()} {$message}\n"; }
  *     function description() { return "Sample job {$this->info}"; }
+ *     function coalesceId() { return NULL; }
  * }
  * 
  * // 2) create a queuestore
@@ -67,9 +68,10 @@ interface JQJob
     /**
      * Run the job.
      *
-     * @return mixed NULL if completed successfully, otherwise a string error message.
+     * @return string One of JQManagedJob::STATUS_WAIT_ASYNC or JQManagedJob::STATUS_COMPLETED. Throw an exception to indicate an error.
+     * @throws object Exception Throw an exception if there is a problem.
      */
-    function run();
+    function run(JQManagedJob $mJob);
 
     /**
      * Cleanup any resources held by the job.
@@ -126,6 +128,7 @@ final class JQManagedJob implements JQJob
     const STATUS_UNQUEUED       = 'unqueued';
     const STATUS_QUEUED         = 'queued';
     const STATUS_RUNNING        = 'running';
+    const STATUS_WAIT_ASYNC     = 'wait_async';
     const STATUS_COMPLETED      = 'completed';
     const STATUS_FAILED         = 'failed';
 
@@ -145,11 +148,12 @@ final class JQManagedJob implements JQJob
     /**
      * Status state transition diagram:
      * 
-     * STATUS_UNQUEUED -+-> STATUS_QUEUED -> STATUS_RUNNING -+-> STATUS_COMPLETED
-     *                  ^                                    |
-     *                  \--- STATUS_QUEUED (retry) ---------<+
-     *                                                       \-> STATUS_FAILED
+     * STATUS_UNQUEUED -+-> STATUS_QUEUED -> STATUS_RUNNING -OR- STATUS_WAIT_ASYNC --+-> STATUS_COMPLETED
+     *                  ^                                                            |
+     *                  \--- STATUS_QUEUED (retry) ---------------------------------<+
+     *                                                                                \-> STATUS_FAILED
      *
+     * Note that if a job is in STATUS_WAIT_ASYNC other jobs can continue running.
      *
      * @var string The status of the job, see JQManagedJob::STATUS*.
      */
@@ -190,6 +194,11 @@ final class JQManagedJob implements JQJob
     private $isRunningLock = false;
 
     /**
+     * @var boolean Delete the job once completed?
+     */
+    private $deleteOnComplete = true;
+
+    /**
      * Constructor for JQManagedJob.
      *
      * @param object JQStore
@@ -198,6 +207,7 @@ final class JQManagedJob implements JQJob
      *              priority:       int             - priority of the job, default 0
      *              maxAttempts:    int             - maximum number of attempts allowed for this job, default 1
      *              queueName:      string          - the queueName to associate this job with
+     *       deleteOnComplete:      boolean         - delete the job when done? default false
      */
     public function __construct($jqStore, $options = array())
     {
@@ -223,6 +233,10 @@ final class JQManagedJob implements JQJob
         if (isset($options['queueName']))
         {
             $this->queueName = $options['queueName'];
+        }
+        if (isset($options['deleteOnComplete']))
+        {
+            $this->deleteOnComplete = $options['deleteOnComplete'];
         }
     }
 
@@ -354,11 +368,15 @@ final class JQManagedJob implements JQJob
         $oldStatus = $this->status;
         $this->status = $newStatus;
 
-        // sanity check -- if has all valid state transitions
+        // no-op check
+        if ($oldStatus === $newStatus) return;
+
+        // sanity check -- "if" statement below has all valid state transitions
         if (!(
                  ($oldStatus === self::STATUS_UNQUEUED && $newStatus === self::STATUS_QUEUED)
                  OR ($oldStatus === self::STATUS_QUEUED && $newStatus === self::STATUS_RUNNING)
-                 OR ($oldStatus === self::STATUS_RUNNING && in_array($newStatus, array(self::STATUS_RUNNING, self::STATUS_COMPLETED, self::STATUS_FAILED)))
+                 OR ($oldStatus === self::STATUS_RUNNING && in_array($newStatus, array(self::STATUS_WAIT_ASYNC, self::STATUS_COMPLETED, self::STATUS_FAILED)))
+                 OR ($oldStatus === self::STATUS_WAIT_ASYNC && in_array($newStatus, array(self::STATUS_RUNNING, self::STATUS_COMPLETED, self::STATUS_FAILED)))
             ))
         {
             throw new Exception("Invalid state change: {$oldStatus} => {$newStatus}");
@@ -412,15 +430,36 @@ final class JQManagedJob implements JQJob
     }
 
     /**
+     * Mark the job as waiting -- used for jobs that call out to asynchronous collaborators.
+     * 
+     * When the job finishes, it should call markJobComplete() or markJobFailed().
+     */
+    private function markJobWaitAsync()
+    {
+        $this->setStatus(JQManagedJob::STATUS_WAIT_ASYNC);
+        $this->save();
+    }
+
+    /**
      * Mark the job as completed.
      *
      * This function tells the JQStore to delete the JQManagedJob.
      */
-    private function markJobComplete()
+    public function markJobComplete()
     {
+        $this->isRunningLock = false;
+
         $this->endDts = new DateTime();
         $this->setStatus(JQManagedJob::STATUS_COMPLETED);
-        $this->delete($this);
+
+        if ($this->deleteOnComplete)
+        {
+            $this->delete($this);
+        }
+        else
+        {
+            $this->save();
+        }
     }
 
     /**
@@ -432,8 +471,10 @@ final class JQManagedJob implements JQJob
      *
      * @param string The error message generated by the failed job.
      */
-    private function markJobFailed($errorMessage = NULL)
+    public function markJobFailed($errorMessage = NULL)
     {
+        $this->isRunningLock = false;
+
         $this->errorMessage = $errorMessage;
         $this->endDts = new DateTime();
 
@@ -496,8 +537,10 @@ final class JQManagedJob implements JQJob
      * @return mixed Error from run; NULL if no error, a string message if there was an error.
      * @see JQJob
      */
-    public function run()
+    public function run(JQManagedJob $job)
     {
+        if ($this !== $job) throw new Exception("Must pass in the JQManagedJob, and yes, I know it's the same as the object used to call the run() method on. This is just a test to be sure you're paying attention.");
+
         if ($this->isRunningLock) throw new Exception("Local run lock already in use... can't run a job twice.");
         $this->isRunningLock = true;
 
@@ -507,23 +550,28 @@ final class JQManagedJob implements JQJob
         // run the job
         $err = NULL;
         try {
-            $err = $this->job->run();
+            $disposition = $this->job->run($this);
         } catch (Exception $e) {
             $err = $e->getMessage();
+            $disposition = self::STATUS_FAILED;
         }
 
+        // error-checking cleanup
         restore_error_handler();
 
-        if ($err)
-        {
-            $this->markJobFailed($err);
+        switch ($disposition) {
+            case self::STATUS_COMPLETED:
+                $this->markJobComplete();
+                break;
+            case self::STATUS_WAIT_ASYNC:
+                $this->markJobWaitAsync();
+                break;
+            case self::STATUS_FAILED:
+                $this->markJobFailed($err);
+                break;
+            default:
+                throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->run(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
         }
-        else
-        {
-            $this->markJobComplete();
-        }
-
-        $this->isRunningLock = false;
 
         return $err;
     }
@@ -997,15 +1045,15 @@ class JQWorker
             $nextJob = $this->jqStore->next($this->options['queueName']);
             if ($nextJob)
             {
-                $this->log("[Job: {$nextJob->getJobId()} RUNNING] {$nextJob->getJob()->description()}", true);
-                $result = $nextJob->run();
+                $this->log("[Job: {$nextJob->getJobId()} {$nextJob->getStatus()}] {$nextJob->getJob()->description()}", true);
+                $result = $nextJob->run($nextJob);
                 if ($result === NULL)
                 {
-                    $this->log("[Job: {$nextJob->getJobId()} COMPLETED]", true);
+                    $this->log("[Job: {$nextJob->getJobId()} {$nextJob->getStatus()}]", true);
                 }
                 else
                 {
-                    $this->log("[Job: {$nextJob->getJobId()} FAILED] {$result}");
+                    $this->log("[Job: {$nextJob->getJobId()} {$nextJob->getStatus()}] {$result}");
                 }
 
                 $this->jobsProcessed++;

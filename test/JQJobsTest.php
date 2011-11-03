@@ -34,6 +34,32 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @testdox Test worker doesn't block when a job returns JQManagedJob::STATUS_WAIT_ASYNC
+     */
+    function testJQJobsWaitAsync()
+    {
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        $this->assertEquals(0, $q->count('test'));
+
+        // Add jobs
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new SampleAsyncJob($this), array('queueName' => 'test'));
+        }
+
+        $this->assertEquals(10, $q->count());
+        $this->assertEquals(10, $q->count('test'));
+        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w->start();
+
+        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_WAIT_ASYNC));
+    }
+
+    /**
      * @testdox JQJobs deletes successfully deleted jobs
      */
     function testDeleteSuccessfulJobs()

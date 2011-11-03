@@ -5,6 +5,7 @@ Features
 * Very light-weight and easy-to-use.
 * Supports multiple job types.
 * Supports multiple queues & binding workers to specific queues.
+* Supports jobs that proxy the work to third-party services. This allows other jobs to be worked on but tracks the status of the third-party job through JQJobs.
 * Tracks job enqueue time, start time, and finish time.
 * Priority scheduling.
 * Coalescing job support (if a job with the same coalesceId is enqueued, no duplicate job is created; the original is returned). This is basically a lightweight built-in mutex to help you prevent from creating duplicate jobs for the same "thing".

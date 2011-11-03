@@ -25,7 +25,11 @@ class CTestJob implements JQJob
     {
         $this->job=$jobid;
     }
-    function run() { print "running job {$this->job}"; }
+    function run(JQManagedJob $mJob)
+    {
+        print "running job {$this->job}";
+        return JQManagedJob::STATUS_COMPLETED;
+    }
     function cleanup() {}
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "job {$this->job}"; }
@@ -39,18 +43,21 @@ class QuietSimpleJob implements JQJob
     {
         $this->job=$jobid;
     }
-    function run() {}
+    function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function cleanup() {}
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "job {$this->job}"; }
     function coalesceId() { return NULL; }
 }
 
-
 class SampleJob implements JQJob
 {
     function __construct($info) { $this->info = $info; }
-    function run() { $this->info->counter++; } // no-op
+    function run(JQManagedJob $mJob) // no-op
+    {
+        $this->info->counter++;
+        return JQManagedJob::STATUS_COMPLETED;
+    }
     function coalesceId() { return NULL; }
     function cleanup() { }
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
@@ -63,7 +70,7 @@ class SampleCoalescingJob extends SampleJob
     {
         $this->id = $id;
     }
-    function run() {}
+    function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function coalesceId() { return $this->id; }
     function cleanup() { }
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
@@ -73,9 +80,23 @@ class SampleCoalescingJob extends SampleJob
 class SampleFailJob implements JQJob
 {
     function __construct($info) { $this->info = $info; }
-    function run() { trigger_error("something went boom", E_USER_ERROR); }
+    function run(JQManagedJob $mJob)
+    {
+        trigger_error("something went boom", E_USER_ERROR);
+        return JQManagedJob::STATUS_FAILED;
+    }
     function cleanup() { }
     function coalesceId() { return NULL; }
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Sample FAIL job"; }
+}
+
+class SampleAsyncJob implements JQJob
+{
+    function __construct($info) { $this->info = $info; }
+    function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
+    function cleanup() { }
+    function coalesceId() { return NULL; }
+    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
+    function description() { return "Sample async job"; }
 }
