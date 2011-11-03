@@ -28,3 +28,6 @@ comice exec mp -x'pgsql:dbname=jqjobs_test;user=postgres;host=localhost' -r -m h
 comice exec propel-gen propel-build reverse && \
     php propel-build/fix-schema.php && \
     comice exec propel-gen propel-build om convert-conf
+
+# tags
+ctags -f tags -R --extra=+f *php lib
