@@ -152,6 +152,14 @@ class JQStore_Propel implements JQStore
         return $dbJob;
     }
 
+    private function getDbJobByCoalesceId($coalesceId)
+    {
+        $c = new Criteria;
+        $c->add(JQStoreManagedJobPeer::COALESCE_ID, $coalesceId);
+        $dbJob = JQStoreManagedJobPeer::doSelectOne($c, $this->con);
+        return $dbJob;
+    }
+
     /**
      * Get a JQManagedJob from the propel store corresponding to the given job id.
      *
@@ -160,6 +168,23 @@ class JQStore_Propel implements JQStore
     public function get($jobId)
     {
         $dbJob = $this->getDbJob($jobId);
+        return $this->getJQManagedJobForDbJob($dbJob);
+    }
+
+    /**
+     * Get a JQManagedJob from the propel store corresponding to the given coalesce id.
+     *
+     * This is basically an unseralizer.
+     */
+    public function getByCoalesceId($coalesceId)
+    {
+        $dbJob = $this->getDbJobByCoalesceId($coalesceId);
+        if ($dbJob === NULL) return NULL;
+        return $this->getJQManagedJobForDbJob($dbJob);
+    }
+
+    private function getJQManagedJobForDbJob($dbJob)
+    {
         $mJob = new JQManagedJob($this);
         $mJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
         return $mJob;
