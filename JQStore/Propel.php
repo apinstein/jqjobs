@@ -60,6 +60,7 @@ class JQStore_Propel implements JQStore
                 $mJob = new JQManagedJob($this, $options);
                 $mJob->setJob($job);
                 $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
+                $mJob->setCoalesceId($job->coalesceId());
                 
                 $dbJob = new $this->propelClassName;
                 $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
@@ -84,11 +85,7 @@ class JQStore_Propel implements JQStore
             return NULL;
         }
 
-        $c = new Criteria;
-        $c->add($this->options['jobCoalesceIdColName'], $coalesceId);
-        $existingJob = call_user_func_array(array("{$this->propelClassName}Peer", 'doSelectOne'), $c, $this->con);
-
-        return $existingJob;
+        return (bool)$this->getByCoalesceId($coalesceId);
     }
 
     public function next($queueName = NULL)
@@ -155,9 +152,11 @@ class JQStore_Propel implements JQStore
     private function getDbJobByCoalesceId($coalesceId)
     {
         $c = new Criteria;
-        $c->add(JQStoreManagedJobPeer::COALESCE_ID, $coalesceId);
-        $dbJob = JQStoreManagedJobPeer::doSelectOne($c, $this->con);
-        return $dbJob;
+        $c->add($this->options['jobCoalesceIdColName'], $coalesceId);
+        return call_user_func_array(
+            array("{$this->propelClassName}Peer", 'doSelectOne'),
+            array($c, $this->con)
+        );
     }
 
     /**
