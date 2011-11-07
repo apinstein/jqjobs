@@ -213,6 +213,22 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
     }
 
+    function testJobsAreRetrieveableByCoalesceId()
+    {
+        // Create a queue
+        $q = new JQStore_Array();
+
+        // Add a job
+        $coalesceId = 'foo';
+        $insertedJob = new SampleCoalescingJob($coalesceId);
+        $options = array('queueName' => 'test');
+        $q->enqueue($insertedJob, $options);
+
+        // Try to retrieve a job by coalesceId, make sure it's the same object
+        $retrievedJob = $q->getByCoalesceId($coalesceId)->getJob();
+        $this->assertEquals($insertedJob, $retrievedJob);
+    }
+
     function testRetry()
     {
         // create a queuestore

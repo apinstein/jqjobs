@@ -73,6 +73,16 @@ class JQStore_Array implements JQStore
     {
         return $this->queue[$jobId];
     }
+    public function getByCoalesceId($coalesceId)
+    {
+        // Look for the job
+        foreach ($this->queue as $dbJob) {
+            if ($dbJob->coalesceId() == $coalesceId) return $dbJob;
+        }
+
+        // We didn't find a job.
+        return NULL;
+    }
     public function save(JQManagedJob $job) {} // noop -- in memory!
     public function delete(JQManagedJob $mJob)
     {

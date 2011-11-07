@@ -63,4 +63,23 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $q->count('test'));
         $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
     }
+
+    function testJobsAreRetrieveableByCoalesceId()
+    {
+        // Add some jobs
+        $coalesceId  = 'foo';
+        $insertedJob = new SampleCoalescingJob($coalesceId);
+        $options     = array('queueName' => 'test');
+        $this->q->enqueue($insertedJob, $options);
+
+        // Make sure we have a job enqueued
+        // Helpful for debugging...
+        $this->assertEquals(1, $this->q->count('test'));
+        $this->assertEquals($coalesceId, $insertedJob->coalesceId());
+
+        // Make sure the job exists for the coalesceId
+        $retrievedJob = $this->q->getByCoalesceId($coalesceId)->getJob();
+        $this->assertEquals($insertedJob, $retrievedJob);
+    }
+
 }
