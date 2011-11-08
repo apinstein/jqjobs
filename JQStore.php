@@ -65,6 +65,15 @@ interface JQStore
     function get($jobId);
 
     /**
+     * Get a JQManagedJob from the JQStore by the
+     * coalesceId.
+     *
+     * @param string The coalesceId to check for.
+     * @return object JQManagedJob
+     */
+    function getByCoalesceId($coalesceId);
+
+    /**
      * Save the job (which presumably has been updated) to the backing store.
      *
      * @param object JQManagedJob

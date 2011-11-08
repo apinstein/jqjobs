@@ -60,6 +60,7 @@ class JQStore_Propel implements JQStore
                 $mJob = new JQManagedJob($this, $options);
                 $mJob->setJob($job);
                 $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
+                $mJob->setCoalesceId($job->coalesceId());
                 
                 $dbJob = new $this->propelClassName;
                 $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
@@ -84,11 +85,7 @@ class JQStore_Propel implements JQStore
             return NULL;
         }
 
-        $c = new Criteria;
-        $c->add($this->options['jobCoalesceIdColName'], $coalesceId);
-        $existingJob = call_user_func_array(array("{$this->propelClassName}Peer", 'doSelectOne'), $c, $this->con);
-
-        return $existingJob;
+        return (bool)$this->getByCoalesceId($coalesceId);
     }
 
     public function next($queueName = NULL)
@@ -152,6 +149,16 @@ class JQStore_Propel implements JQStore
         return $dbJob;
     }
 
+    private function getDbJobByCoalesceId($coalesceId)
+    {
+        $c = new Criteria;
+        $c->add($this->options['jobCoalesceIdColName'], $coalesceId);
+        return call_user_func_array(
+            array("{$this->propelClassName}Peer", 'doSelectOne'),
+            array($c, $this->con)
+        );
+    }
+
     /**
      * Get a JQManagedJob from the propel store corresponding to the given job id.
      *
@@ -160,6 +167,23 @@ class JQStore_Propel implements JQStore
     public function get($jobId)
     {
         $dbJob = $this->getDbJob($jobId);
+        return $this->getJQManagedJobForDbJob($dbJob);
+    }
+
+    /**
+     * Get a JQManagedJob from the propel store corresponding to the given coalesce id.
+     *
+     * This is basically an unseralizer.
+     */
+    public function getByCoalesceId($coalesceId)
+    {
+        $dbJob = $this->getDbJobByCoalesceId($coalesceId);
+        if ($dbJob === NULL) return NULL;
+        return $this->getJQManagedJobForDbJob($dbJob);
+    }
+
+    private function getJQManagedJobForDbJob($dbJob)
+    {
         $mJob = new JQManagedJob($this);
         $mJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
         return $mJob;
