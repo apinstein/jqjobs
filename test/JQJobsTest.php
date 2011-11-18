@@ -229,7 +229,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($insertedJob, $retrievedJob);
     }
 
-    function testRetry()
+    function testJobsAutoRetryOnFailure()
     {
         // create a queuestore
         $maxAttempts = 5;

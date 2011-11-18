@@ -261,6 +261,7 @@ final class JQManagedJob implements JQJob
                  OR ($oldStatus === self::STATUS_QUEUED && $newStatus === self::STATUS_RUNNING)
                  OR ($oldStatus === self::STATUS_RUNNING && in_array($newStatus, array(self::STATUS_WAIT_ASYNC, self::STATUS_COMPLETED, self::STATUS_FAILED, self::STATUS_QUEUED)))
                  OR ($oldStatus === self::STATUS_WAIT_ASYNC && in_array($newStatus, array(self::STATUS_RUNNING, self::STATUS_COMPLETED, self::STATUS_FAILED)))
+                 OR ($oldStatus === self::STATUS_FAILED && $newStatus === self::STATUS_QUEUED)
             ))
         {
             throw new Exception("Invalid state change: {$oldStatus} => {$newStatus}");
@@ -359,20 +360,28 @@ final class JQManagedJob implements JQJob
     {
         $this->isRunningLock = false;
 
-        $this->errorMessage = $errorMessage;
-        $this->endDts = new DateTime();
-
         if ($this->getAttemptNumber() < $this->getMaxAttempts()) // retry
         {
-            // @todo it's a little lame that this doesn't re-queue at the end of the queue; or maybe jobs should have requeue option; END, after X seconds; right away? longer each time, @ 2x last run time?
-            $this->startDts->modify("+10 seconds");
-            $this->endDts = NULL;
-            $this->setStatus(JQManagedJob::STATUS_QUEUED);
+            $this->retry();
         }
         else                                                    // fail for good
         {
+            $this->errorMessage = $errorMessage;
+            $this->endDts = new DateTime();
             $this->setStatus(JQManagedJob::STATUS_FAILED);
+            $this->save();
         }
+    }
+
+    /**
+     * Re-queue the job so that it will be attempted again.
+     */
+    public function retry()
+    {
+        // @todo it's a little lame that this doesn't re-queue at the end of the queue; or maybe jobs should have requeue option; END, after X seconds; right away? longer each time, @ 2x last run time?
+        $this->startDts->modify("+10 seconds");
+        $this->endDts = NULL;
+        $this->setStatus(JQManagedJob::STATUS_QUEUED);
         $this->save();
     }
 
