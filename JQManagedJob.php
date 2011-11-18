@@ -389,7 +389,7 @@ final class JQManagedJob implements JQJob
      *
      * This function ensures that {@link JQJob::cleanup()} is executed.
      */
-    private function delete()
+    public function delete()
     {
         $this->cleanup();
         $this->jqStore->delete($this);
