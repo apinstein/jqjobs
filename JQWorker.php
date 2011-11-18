@@ -164,6 +164,7 @@ class JQWorker
         }
 
         // check for out-of-date code
+        clearstatcache();
         foreach ($this->allIncludedFiles as $includedFile => $dts) {
             if ($dts != filemtime($includedFile))
             {
