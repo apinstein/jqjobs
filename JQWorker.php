@@ -1,6 +1,5 @@
 <?php
 // vim: set expandtab tabstop=4 shiftwidth=4:
-
 /**
  * A simple worker class.
  *
@@ -19,6 +18,9 @@ class JQWorker
     protected $pid = NULL;
     protected $jobsProcessed = 0;
     protected $allIncludedFiles = NULL;
+
+    private $currentJob = NULL;
+    private $controlCAlready = false;
 
     /**
      * Create a JQWorker.
@@ -51,6 +53,15 @@ class JQWorker
                                      $options
                                     );
         $this->pid = getmypid();
+
+        // install signal handlers if possible
+        declare(ticks = 1);
+        if (function_exists('pcntl_signal'))
+        {
+            foreach (array(SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM) as $signal) {
+                pcntl_signal($signal, array($this, 'signalHandler'));
+            }
+        }
     }
 
     protected function log($msg, $verboseOnly = false)
@@ -75,30 +86,23 @@ class JQWorker
     {
         $this->log("Starting worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));;
 
-        // install signal handlers if possible
-        declare(ticks = 1);
-        if (function_exists('pcntl_signal'))
-        {
-            foreach (array(SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM) as $signal) {
-                pcntl_signal($signal, array($this, 'stop'));
-            }
-        }
+        $this->okToRun = true;
         while ($this->okToRun) {
             $this->memCheck();
             $this->codeCheck();
 
-            $nextJob = $this->jqStore->next($this->options['queueName']);
-            if ($nextJob)
+            $this->currentJob = $this->jqStore->next($this->options['queueName']);
+            if ($this->currentJob)
             {
-                $this->log("[Job: {$nextJob->getJobId()} {$nextJob->getStatus()}] {$nextJob->getJob()->description()}", true);
-                $result = $nextJob->run($nextJob);
+                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$this->currentJob->getJob()->description()}", true);
+                $result = $this->currentJob->run($this->currentJob);
                 if ($result === NULL)
                 {
-                    $this->log("[Job: {$nextJob->getJobId()} {$nextJob->getStatus()}]", true);
+                    $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}]", true);
                 }
                 else
                 {
-                    $this->log("[Job: {$nextJob->getJobId()} {$nextJob->getStatus()}] {$result}");
+                    $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$result}");
                 }
 
                 $this->jobsProcessed++;
@@ -172,6 +176,54 @@ class JQWorker
                 exit(1);
             }
         }
+    }
+
+    public function signalHandler($sigNo)
+    {
+        $this->log("Signal {$sigNo} received.");
+        switch ($sigNo) {
+        case SIGTERM:
+        case SIGQUIT:
+        case SIGABRT:
+            $this->stopImmediately();
+            break;
+        case SIGHUP:
+            $this->log("HUP received; will gracefully exit. Your supervisor process should auto-restart the worker.");
+            $this->stop();
+            break;
+        case SIGINT:
+            if ($this->controlCAlready)
+            {
+                $this->log("SIGINT received again; terminating immediately.");
+                $this->stopImmediately();
+            }
+            else
+            {
+                $this->log("SIGINT received; will exit after current job finishes. To exit immediatley, control-c again.");
+                $this->controlCAlready = true;
+                $this->stop();
+            }
+            break;
+        default:
+            // ignore
+        }
+    }
+
+    /**
+     * FAILS the current job and exit immediately.
+     */
+    public function stopImmediately()
+    {
+        $this->log("Terminating immediately.");
+        // try to fail job gracefully
+        if ($this->currentJob && $this->currentJob->getStatus() === JQManagedJob::STATUS_RUNNING)
+        {
+            $this->log("Failing job #{$this->currentJob->getJobId()}: {$this->currentJob->description()}");
+            $this->currentJob->markJobFailed("Worker was asked to terminate immediately.");
+            $this->log("Successfully marked job failed.");
+        }
+        // exit with non-zero return code
+        exit(1);
     }
 
     /**

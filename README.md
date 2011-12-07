@@ -68,6 +68,8 @@ The minimal amount of work needed to use a JQJobs is 1) create at least one job;
 
 4) Start a worker to run the jobs.
 
+    declare(ticks = 1);       // to have JQJobs be able to gracefully handle SIGKILL (or other *immediate termination* signals)
+                              // the declare(ticks=1) must be in global scope.
     $w = new JQWorker($q);
     $w->start();
 
