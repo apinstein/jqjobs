@@ -10,6 +10,7 @@ class JQStore_Array implements JQStore
 {
     protected $queue = array();
     protected $jobId = 1;
+    protected $mutexInUse = false;
 
     public function enqueue(JQJob $job, $options = array())
     {
@@ -72,6 +73,17 @@ class JQStore_Array implements JQStore
     public function get($jobId)
     {
         return $this->queue[$jobId];
+    }
+    public function getWithMutex($jobId)
+    {
+        if ($this->mutexInUse) throw new JQStore_JobIsLockedException("JQStore_Array allows only one job checked out with a mutex.");
+        $this->mutexInUse = true;
+        return $this->get($jobId);
+    }
+    public function clearMutex($jobId)
+    {
+        if (!$this->mutexInUse) throw new Exception("No mutex.");
+        $this->mutexInUse = false;
     }
     public function getByCoalesceId($coalesceId)
     {

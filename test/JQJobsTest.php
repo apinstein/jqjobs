@@ -33,6 +33,46 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, $q->count('test'));
     }
 
+    private function setup10SampleJobs($q, $queueName = 'test')
+    {
+        // Add jobs
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new SampleJob($this), array('queueName' => $queueName));
+        }
+    }
+
+    function testGetJobWithoutMutex()
+    {
+        $q = new JQStore_Array();
+        $this->setup10SampleJobs($q);
+
+        foreach (range(1,10) as $i) {
+            $j = $q->get($i);
+        }
+    }
+
+    function testGetJobWithMutexLocksJobSuccessfully()
+    {
+        $q = new JQStore_Array();
+        $this->setup10SampleJobs($q);
+
+        $jobId = 1;
+        $j = $q->getWithMutex($jobId);
+        $this->setExpectedException('JQStore_JobIsLockedException');
+        $q->getWithMutex($jobId);
+    }
+
+    function testGetJobWithMutexThenClearThenLock()
+    {
+        $q = new JQStore_Array();
+        $this->setup10SampleJobs($q);
+
+        $jobId = 1;
+        $q->getWithMutex($jobId);
+        $q->clearMutex($jobId);
+        $q->getWithMutex($jobId);
+    }
+
     /**
      * @testdox Test worker doesn't block when a job returns JQManagedJob::STATUS_WAIT_ASYNC
      */

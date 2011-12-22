@@ -65,6 +65,22 @@ interface JQStore
     function get($jobId);
 
     /**
+     * Get a JQManagedJob from the JQStore by ID, but LOCK the job so that it cannot be concurrently updated.
+     *
+     * NOTE: Some backends may not support per-job mutexes; in that case they may not allow you to lock more than one job at a time in the same process.
+     *
+     * @param string JobId.
+     * @return object JQStoreManagedJob, or NULL if not found.
+     * @throws JQStore_JobIsLockedException if lock cannot be obtained.
+     */
+    function getWithMutex($jobId);
+
+    /**
+     * Clear the mutex on the job.
+     */
+    function clearMutex($jobId);
+
+    /**
      * Get a JQManagedJob from the JQStore by the
      * coalesceId.
      *
@@ -100,3 +116,4 @@ interface JQStore
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
 }
 
+class JQStore_JobIsLockedException extends Exception {}

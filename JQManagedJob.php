@@ -388,7 +388,7 @@ final class JQManagedJob implements JQJob
     /**
      * Update the job in the JQStore.
      */
-    private function save()
+    public function save()
     {
         $this->jqStore->save($this);
     }

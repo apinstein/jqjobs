@@ -47,6 +47,34 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, $q->count('test'));
     }
 
+    private function setup10SampleJobs($queueName = 'test')
+    {
+        $jobIdsByIndex = array();
+        foreach (range(1,10) as $i) {
+            $job = $this->q->enqueue(new QuietSimpleJob($i), array('queueName' => $queueName));
+            $jobIdsByIndex[] = $job->getJobId();
+        }
+        return $jobIdsByIndex;
+    }
+
+    function testGetJobWithMutexLocksJobSuccessfully()
+    {
+        $jobIdsByIndex = $this->setup10SampleJobs();
+        $jobId = current($jobIdsByIndex);
+        $j = $this->q->getWithMutex($jobId);
+        $this->setExpectedException('JQStore_JobIsLockedException');
+        $this->q->getWithMutex($jobId);
+    }
+
+    function testGetJobWithMutexThenClearThenLock()
+    {
+        $jobIdsByIndex = $this->setup10SampleJobs();
+        $jobId = current($jobIdsByIndex);
+        $this->q->getWithMutex($jobId);
+        $this->q->clearMutex($jobId);
+        $this->q->getWithMutex($jobId);
+    }
+
     /**
      * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
      */

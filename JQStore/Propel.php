@@ -10,14 +10,16 @@
  */
 class JQStore_Propel implements JQStore
 {
-    protected $con = NULL;
+    protected $con;
     protected $propelClassName;
     protected $options;
+    protected $mutexInUse;
 
     public function __construct($propelClassName, $con, $options = array())
     {
         $this->propelClassName = $propelClassName;
         $this->con = $con;
+        $this->mutexInUse = false;
 
         $this->options = array_merge(array(
                                             'tableName'                 => 'JQStoreManagedJob',
@@ -168,6 +170,29 @@ class JQStore_Propel implements JQStore
     {
         $dbJob = $this->getDbJob($jobId);
         return $this->getJQManagedJobForDbJob($dbJob);
+    }
+
+    public function getWithMutex($jobId)
+    {
+        if ($this->mutexInUse) throw new JQStore_JobIsLockedException("JQStore_Propel allows only one job checked out with a mutex per process.");
+
+        // lock
+        $jobId = (int) $jobId;  // sql injection preventer
+        $sql = "select {$this->options['jobIdColName']} from {$this->options['tableName']} where {$this->options['jobIdColName']} = {$jobId} for update";
+        $this->con->beginTransaction();
+        $this->con->query($sql);
+
+        $this->mutexInUse = true;
+
+        // fetch job
+        return $this->get($jobId);
+    }
+
+    public function clearMutex($jobId)
+    {
+        if (!$this->mutexInUse) throw new Exception("No mutex.");
+        $this->con->commit();
+        $this->mutexInUse = false;
     }
 
     /**
