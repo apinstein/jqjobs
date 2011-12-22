@@ -52,7 +52,7 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
      */
     function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
     {
-        $q = new JQStore_Array();
+        $q = $this->q;
 
         $coalesceId = 1234;
 

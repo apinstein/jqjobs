@@ -85,7 +85,7 @@ class JQStore_Propel implements JQStore
             return NULL;
         }
 
-        return (bool)$this->getByCoalesceId($coalesceId);
+        return $this->getByCoalesceId($coalesceId);
     }
 
     public function next($queueName = NULL)
