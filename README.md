@@ -17,6 +17,7 @@ Features
 * Workers designed to be run under runit or similar process supervisor for maintenance-free operation.
 * Auto-retry failed jobs.
 * Good test coverage.
+* Utility class JQDelayedJob makes it trivial to run php code after the script exits. This is a great way to defer things like logging to after the request is handled for a more performant application.
 
 Roadmap
 * Queue admin tool (cli & gui)
@@ -27,6 +28,7 @@ The job system has only a few parts:
 * JQManagedJob is a wrapper for JQJob's which contains metadata used to manage the job (status, priority, etc).
 * JQStore is where JQManagedJob's are persisted. The application queues jobs in a JQStore for later processing.
 * JQWorker runs jobs from the queue. It is typically run in a background process.
+* JQDelayedJob is a utility class for registering a function or job to be run after the script exits.
 
 The JQStore manages the queue and persistence of the JQManagedJob's.
 
@@ -72,6 +74,13 @@ The minimal amount of work needed to use a JQJobs is 1) create at least one job;
                               // the declare(ticks=1) must be in global scope.
     $w = new JQWorker($q);
     $w->start();
+
+=======================
+
+JQDelayedJob Example
+
+    JQDelayedJob::doLater(new MyJob('data'));
+    JQDelayedJob::doLater(function() { print "Hello, World. I am running from a delayed job after the script exits!"; });
 
 INSTALLATION
 
