@@ -117,7 +117,7 @@ class JQWorker
             $this->currentJob = $this->jqStore->next($this->options['queueName']);
             if ($this->currentJob)
             {
-                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$this->currentJob->getJob()->description()}", true);
+                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$this->currentJob->description()}", true);
                 $result = $this->currentJob->run($this->currentJob);
                 if ($result === NULL)
                 {

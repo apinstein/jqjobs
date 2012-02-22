@@ -191,7 +191,11 @@ final class JQManagedJob implements JQJob
             switch ($k) {
                 case 'job':
                     $ser = base64_decode($data[$k]);
-                    $v = unserialize($ser);
+                    try {
+                        $v = unserialize($ser); // will result in object JQJob
+                    } catch (Exception $e) {
+                        $v = NULL;
+                    }
                     break;
                 case 'creationDts':
                 case 'startDts':
@@ -433,6 +437,7 @@ final class JQManagedJob implements JQJob
     public function run(JQManagedJob $job)
     {
         if ($this !== $job) throw new Exception("Must pass in the JQManagedJob, and yes, I know it's the same as the object used to call the run() method on. This is just a test to be sure you're paying attention.");
+        if (!($this->job instanceof JQJob)) throw new Exception("JQManagedJob.job is not a JQJob instance. Nothing to run.");
 
         if ($this->isRunningLock) throw new Exception("Local run lock already in use... can't run a job twice.");
         $this->isRunningLock = true;
@@ -474,7 +479,7 @@ final class JQManagedJob implements JQJob
      */
     public function coalesceId()
     {
-        return $this->job->coalesceId();
+        return $this->coalesceId;
     }
 
     /**
@@ -482,6 +487,8 @@ final class JQManagedJob implements JQJob
      */
     public function cleanup()
     {
+        if (!($this->job instanceof JQJob)) return;
+
         $this->job->cleanup();
     }
 
@@ -490,7 +497,10 @@ final class JQManagedJob implements JQJob
      */
     public function statusDidChange(JQManagedJob $mJob, $oldStatus, $message)
     {
-        $this->job->statusDidChange($mJob, $oldStatus, $message);
+        if ($this->job instanceof JQJob)
+        {
+            $this->job->statusDidChange($mJob, $oldStatus, $message);
+        }
         $this->jqStore->statusDidChange($this, $oldStatus, $message);
     }
 
@@ -499,6 +509,7 @@ final class JQManagedJob implements JQJob
      */
     public function description()
     {
+        if (!($this->job instanceof JQJob)) return "Job Id {$this->jobId}: JQManagedJob.job is empty.";
         return $this->job->description();
     }
 }

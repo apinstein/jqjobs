@@ -100,3 +100,14 @@ class SampleAsyncJob implements JQJob
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Sample async job"; }
 }
+
+class SampleExceptionalUnserializerJob implements JQJob
+{
+    function __construct() { }
+    function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
+    function cleanup() { }
+    function coalesceId() { return NULL; }
+    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
+    function description() { return "I throw an exception when unserialized."; }
+    function __wakeup() { throw new Exception("__wakeup failed"); }
+}

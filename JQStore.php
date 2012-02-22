@@ -31,6 +31,7 @@ interface JQStore
      *
      * @param string Queue name (NULL = default queue)
      * @return object JQManagedJob
+     * @throws object Exception
      */
     function next($queueName = null);
 
@@ -61,6 +62,7 @@ interface JQStore
      *
      * @param string JobId.
      * @return object JQStoreManagedJob, or NULL if not found.
+     * @throws object Exception
      */
     function get($jobId);
 
@@ -86,6 +88,7 @@ interface JQStore
      *
      * @param string The coalesceId to check for.
      * @return object JQManagedJob
+     * @throws object Exception
      */
     function getByCoalesceId($coalesceId);
 

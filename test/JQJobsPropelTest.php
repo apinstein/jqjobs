@@ -110,4 +110,22 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($insertedJob, $retrievedJob);
     }
 
+    /**
+     * @testdox JQWorker gracefully handles Exceptions thrown during unserialize()/__wakeup() of jobs by failing the job.
+     */
+    function testJqJobsCatchesUnserializeExceptions()
+    {
+        // create a queuestore
+        $job = $this->q->enqueue(new SampleExceptionalUnserializerJob(), array('queueName' => 'test'));
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($this->q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => false));
+        $w->start();
+
+        // have to re-fetch job since db state changed...
+        $job = $this->q->get($job->getJobId());
+
+        // we only get here if the worker cleanly exited.
+        $this->assertEquals(JQManagedJob::STATUS_FAILED, $job->getStatus());
+    }
 }
