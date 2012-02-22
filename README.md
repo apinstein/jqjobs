@@ -13,6 +13,7 @@ Features
 * Queue store is architecturally independent of JQJobs; use our JQStore_Array or JQStore_Propel (db) or write your own.
 * Workers automatically pre-flight memory availability and gracefully restart in low-memory situations to avoid OOM's during job processing.
 * Workers automatically check all source code files in use and gracefully restart if any underlying code has been modified.
+* Workers can have their priority adjusted (ideal for background tasks on web servers for instance).
 * Logs failed job messages.
 * Workers designed to be run under runit or similar process supervisor for maintenance-free operation.
 * Auto-retry failed jobs.

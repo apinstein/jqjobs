@@ -284,4 +284,36 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1, $q->count('test', 'failed'));
         $this->assertEquals($maxAttempts, $jqjob->getAttemptNumber());
     }
+
+    /**
+     * @testdox option priority_adjust defaults to NULL and proc_nice will not be called.
+     */
+    function testAdjustPriorityDefault()
+    {
+        $q = new JQStore_Array();
+
+        // test no adjustment uses default
+        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true)));
+        $wMock->expects($this->never())
+                            ->method('adjustPriority')
+                            ;
+        $wMock->start();
+    }
+
+    /**
+     * @testdox option priority_adjust will call proc_nice to adjust the worker's priorty when queue is started.
+     */
+    function testAdjustPriorityOption()
+    {
+        $q = new JQStore_Array();
+
+        // test with adjustment
+        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('adjustPriority' => 10, 'queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true)));
+        $wMock->expects($this->once())
+                            ->method('adjustPriority')
+                            ->with(10)
+                            ;
+        $wMock->start();
+    }
+
 }

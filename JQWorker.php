@@ -37,6 +37,8 @@ class JQWorker
      *                                             DEFAULT: will require 20% of memory limit still available.
      *              - exitIfNoJobs (boolean): Should the worker exit if no jobs remain. DEFAULT: false.
      *              - exitAfterNJobs (int): The worker will exit after N jobs have been processed. Set to NULL to run forever. DEFAULT: NULL.
+     *              - adjustPriority (int): An integer value used to adjust the priority (see proc_nice). Postive integers reduce priority. Negative integers increase priority (requires root).
+     *                                      A adjustPriority of 10 is reasonable for background processes.
      */
     public function __construct($jqStore, $options = array())
     {
@@ -49,6 +51,7 @@ class JQWorker
                                             'guaranteeMemoryForJob' => 0.2 * $this->getMemoryLimitInBytes(),
                                             'exitIfNoJobs'          => false,
                                             'exitAfterNJobs'        => NULL,
+                                            'adjustPriority'        => NULL,
                                           ),
                                      $options
                                     );
@@ -76,6 +79,21 @@ class JQWorker
         return $this->jobsProcessed;
     }
 
+    /**
+     * Call proc_nice with passed value if available on this platform.
+     *
+     * @param int Priorty adjustment to be made.
+     * @return boolean True if successful.
+     *
+     * @see options['adjustPriority']
+     * @see http://us3.php.net/manual/en/function.proc-nice.php
+     **/
+    public function adjustPriority($adjBy)
+    {
+        if (!function_exists('proc_nice')) return;
+
+        return proc_nice($adjBy);
+    }
 
     /**
      * Starts the worker process.
@@ -85,6 +103,11 @@ class JQWorker
     public function start()
     {
         $this->log("Starting worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));;
+
+        if (isset($this->options['adjustPriority']))
+        {
+            $this->adjustPriority($this->options['adjustPriority']);
+        }
 
         $this->okToRun = true;
         while ($this->okToRun) {
