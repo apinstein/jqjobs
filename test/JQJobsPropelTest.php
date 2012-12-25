@@ -11,7 +11,11 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
 {
     function setup()
     {
-        $this->con = Propel::getConnection(JQStoreManagedJobPeer::DATABASE_NAME);
+        try {
+            $this->con = Propel::getConnection(JQStoreManagedJobPeer::DATABASE_NAME);
+        } catch (Exception $e) {
+            die($e->getMessage());
+        }
         $this->con->beginTransaction();
         $this->con->query("truncate jqstore_managed_job");
         $this->q = new JQStore_Propel('JQStoreManagedJob', $this->con);
