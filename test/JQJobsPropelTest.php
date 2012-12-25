@@ -123,7 +123,7 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
         $job = $this->q->enqueue(new SampleExceptionalUnserializerJob(), array('queueName' => 'test'));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($this->q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => false));
+        $w = new JQWorker($this->q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
         $w->start();
 
         // have to re-fetch job since db state changed...
