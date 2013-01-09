@@ -6,7 +6,7 @@ $spec = Pearfarm_PackageSpec::create(array(Pearfarm_PackageSpec::OPT_BASEDIR => 
              ->setChannel('apinstein.pearfarm.org')
              ->setSummary('A simple job queue engine for PHP.')
              ->setDescription('Easily allow your applications to enqueue jobs and run workers to process jobs. Supports multiple queue stores, priorities, locking, etc.')
-             ->setReleaseVersion('1.0.12')
+             ->setReleaseVersion('1.0.13')
              ->setReleaseStability('stable')
              ->setApiVersion('1.0.3')
              ->setApiStability('stable')
