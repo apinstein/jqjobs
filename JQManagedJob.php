@@ -32,10 +32,10 @@ final class JQManagedJob implements JQJob
     /**
      * Status state transition diagram:
      * 
-     * STATUS_UNQUEUED -+-> STATUS_QUEUED -> STATUS_RUNNING -OR- STATUS_WAIT_ASYNC --+-> STATUS_COMPLETED
-     *                  ^                                                            |
-     *                  \--- STATUS_QUEUED (retry) ---------------------------------<+
-     *                                                                                \-> STATUS_FAILED
+     * STATUS_UNQUEUED -+-> STATUS_QUEUED -> STATUS_RUNNING -> [optional] STATUS_WAIT_ASYNC --+-> STATUS_COMPLETED
+     *                  ^                                                                     |
+     *                  \--- STATUS_QUEUED (retry) ------------------------------------------<+
+     *                                                                                         \-> STATUS_FAILED
      *
      * Note that if a job is in STATUS_WAIT_ASYNC other jobs can continue running.
      *
@@ -254,7 +254,6 @@ final class JQManagedJob implements JQJob
     {
         // change status
         $oldStatus = $this->status;
-        $this->status = $newStatus;
 
         // no-op check
         if ($oldStatus === $newStatus) return;
@@ -270,6 +269,8 @@ final class JQManagedJob implements JQJob
         {
             throw new Exception("Invalid state change: {$oldStatus} => {$newStatus}");
         }
+
+        $this->status = $newStatus;
 
         // inform interested parties of status change
         $this->statusDidChange($this, $oldStatus, $this->errorMessage);

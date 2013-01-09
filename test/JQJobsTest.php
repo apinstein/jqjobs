@@ -316,4 +316,82 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $wMock->start();
     }
 
+    /**
+     * @dataProvider stateTransitionsDataProvider
+     */
+    function testStateTransitions($from, $to, $expectedOk)
+    {
+        // map on how to bootstrap a job to the "FROM" state
+        $pathForSetup = array(
+            JQManagedJob::STATUS_UNQUEUED       => array(),
+            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
+            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
+            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
+            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
+            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
+        );
+
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        // set up initial condiitions
+        $mJob = new JQManagedJob($q);
+        foreach ($pathForSetup[$from] as $s) {
+            $mJob->setStatus($s);
+        }
+        $this->assertEquals($from, $mJob->getStatus());
+        // initial cond OK
+
+        $transition = "[" . ($expectedOk ? 'OK' : 'NO') . "] {$from} => {$to}";
+        if ($expectedOk)
+        {
+            $mJob->setStatus($to);
+            $this->assertEquals($to, $mJob->getStatus(), "{$transition} should be allowed but failed.");
+        }
+        else
+        {
+            try {
+                $mJob->setStatus($to);
+                $this->fail("Expected JQManagedJob->setStatus() to throw Exception due to illegal state change.");
+            } catch (Exception $e) {
+                $this->assertEquals($from, $mJob->getStatus(), "Unallowed {$transition} still mutated job status.");
+            }
+        }
+    }
+    function stateTransitionsDataProvider()
+    {
+        $allStates = array(
+            JQManagedJob::STATUS_UNQUEUED,
+            JQManagedJob::STATUS_QUEUED,
+            JQManagedJob::STATUS_RUNNING,
+            JQManagedJob::STATUS_WAIT_ASYNC,
+            JQManagedJob::STATUS_COMPLETED,
+            JQManagedJob::STATUS_FAILED,
+        );
+        $legitTransitions = array(
+            JQManagedJob::STATUS_UNQUEUED . "=>" . JQManagedJob::STATUS_QUEUED,
+             JQManagedJob::STATUS_QUEUED . "=>" . JQManagedJob::STATUS_RUNNING,
+              JQManagedJob::STATUS_RUNNING . "=>" . JQManagedJob::STATUS_COMPLETED,
+              JQManagedJob::STATUS_RUNNING . "=>" . JQManagedJob::STATUS_FAILED,
+              JQManagedJob::STATUS_RUNNING . "=>" . JQManagedJob::STATUS_QUEUED,
+               JQManagedJob::STATUS_FAILED . "=>" . JQManagedJob::STATUS_QUEUED,
+              JQManagedJob::STATUS_RUNNING . "=>" . JQManagedJob::STATUS_WAIT_ASYNC,
+               JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_WAIT_ASYNC,
+                JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_RUNNING,
+                JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_COMPLETED,
+                JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_FAILED,
+        );
+        $testCases = array();
+        foreach ($allStates as $from) {
+            foreach ($allStates as $to) {
+                // skip set same
+                if ($from === $to) continue;
+
+                $transition = "{$from}=>{$to}";
+                $expectedOk = in_array($transition, $legitTransitions);
+                $testCases[] = array($from, $to, $expectedOk);
+            }
+        }
+        return $testCases;
+    }
 }
