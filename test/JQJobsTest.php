@@ -380,6 +380,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
                 JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_RUNNING,
                 JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_COMPLETED,
                 JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_FAILED,
+                JQManagedJob::STATUS_WAIT_ASYNC . "=>" . JQManagedJob::STATUS_QUEUED,
         );
         $testCases = array();
         foreach ($allStates as $from) {
