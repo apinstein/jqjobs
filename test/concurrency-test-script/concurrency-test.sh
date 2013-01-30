@@ -10,9 +10,9 @@ dbuser=postgres
 queuecount=100
 concurrency=10
 tmp_backup=___temp_backup__
-pg_bin_dir=/opt/local/lib/postgresql84/bin
+pg_bin_dir=/opt/local/lib/postgresql92/bin
 seq_bin=/opt/local/libexec/gnubin/seq
-php_bin=php
+php_bin=php53
 
 echo "Provisioning test database"
 ${pg_bin_dir}/psql -q -U $dbuser postgres -c "drop database if exists ${db};"
@@ -24,8 +24,8 @@ fi
 
 echo "Creating tables..."
 pushd ../..
-mp -f -V 0
-mp -f -x "pgsql:dbname=${db};user=${dbuser}" -m head
+comice exec mp -f -V 0
+comice exec mp -f -x "pgsql:dbname=${db};user=${dbuser};host=localhost" -m head
 popd
 
 echo "Starting pg_dump process in background..."
