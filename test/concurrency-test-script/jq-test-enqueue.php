@@ -2,11 +2,16 @@
 
 require_once dirname(__FILE__) . '/../TestCommon.php';
 
-if ($argc !== 2) throw new Exception("Pass jobId as only argument. A positive integer.");
+if ($argc !== 3) throw new Exception("Usage: jq-test-enqueue.php jobId numToEnqueue");
 $jobId = (int) $argv[1];
 if ($jobId <= 0) throw new Exception("Pass jobId as only argument. A positive integer.");
+$numToEnqueue = $argv[2];
 
 $q = getTestJQStore();
-$q->enqueue(new CTestJob($jobId), array('queueName' => 'concurrency-test'));
-print "Enqueued job {$jobId}\n";
+while ($numToEnqueue) {
+    $cJobId = "{$jobId}.{$numToEnqueue}";
+    $q->enqueue(new CTestJob($cJobId), array('queueName' => 'concurrency-test'));
+    $numToEnqueue--;
+    print "Enqueued job {$cJobId}\n";
+}
 
