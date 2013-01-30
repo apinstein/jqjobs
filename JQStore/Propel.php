@@ -59,15 +59,22 @@ class JQStore_Propel implements JQStore
  
         $this->con->beginTransaction();
         try {
-            // lock the table so we can be sure to get mutex to safely enqueue job without risk of having a colliding coalesceId.
-            // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
-            // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
-            // theoretically this lock should prevent the unique index from ever tripping.
-            $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode;";
-            $this->con->query($lockSql);
+            $coalesceId = $job->coalesceId();
+            if ($coalesceId !== NULL)
+            {
+                // OPTIMIZATION: only lock the table when job being enqueued has a coalesceId; otherwise inserts do not need to be exclusive with other activity (deletes, updates, etc)
+
+                // lock the table so we can be sure to get mutex to safely enqueue job without risk of having a colliding coalesceId.
+                // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
+                // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
+                // theoretically this lock should prevent the unique index from ever tripping.
+                $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode;";
+                $this->con->query($lockSql);
+
+                // look for coalesceId collision
+                $mJob = $this->existsJobForCoalesceId($job->coalesceId());
+            }
  
-            // look for coalesceId collision
-            $mJob = $this->existsJobForCoalesceId($job->coalesceId());
             if (!$mJob)
             {
                 // create a new job
