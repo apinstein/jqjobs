@@ -117,7 +117,7 @@ class JQWorker
             $this->currentJob = $this->jqStore->next($this->options['queueName']);
             if ($this->currentJob)
             {
-                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$this->currentJob->description()}", true);
+                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()} attempt {$this->currentJob->getAttemptNumber()}/{$this->currentJob->getMaxAttempts()}] {$this->currentJob->description()}", true);
                 $result = $this->currentJob->run($this->currentJob);
                 if ($result === NULL)
                 {
@@ -242,7 +242,7 @@ class JQWorker
         if ($this->currentJob && $this->currentJob->getStatus() === JQManagedJob::STATUS_RUNNING)
         {
             $this->log("Failing job #{$this->currentJob->getJobId()}: {$this->currentJob->description()}");
-            $this->currentJob->markJobFailed("Worker was asked to terminate immediately.");
+            $this->currentJob->markJobFailed("Worker was asked to terminate immediately.", true);
             $this->log("Successfully marked job failed.");
         }
         // exit with non-zero return code
