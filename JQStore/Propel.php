@@ -176,6 +176,11 @@ class JQStore_Propel implements JQStore
 
     private function getDbJob($jobId)
     {
+        // HACK: if we're in a transaction here, it's due to being in a signal handler and we need to clear out the current transaction.
+        while ($this->con->isInTransaction())
+        {
+            $this->con->rollback();
+        }   
         call_user_func(array("{$this->propelClassName}Peer", 'clearInstancePool'));
         $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'retrieveByPK'), $jobId, $this->con);
         if (!$dbJob) throw new Exception("Couldn't find jobId {$jobId} in database.");
