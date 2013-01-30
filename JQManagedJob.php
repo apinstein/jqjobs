@@ -341,6 +341,7 @@ final class JQManagedJob implements JQJob
 
         $this->endDts = new DateTime();
         $this->setStatus(JQManagedJob::STATUS_COMPLETED);
+        sleep(30);
 
         if ($this->deleteOnComplete)
         {
