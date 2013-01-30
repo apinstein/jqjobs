@@ -9,7 +9,8 @@ $conf = array (
       'adapter' => 'pgsql',
       'connection' => 
       array (
-        'dsn' => 'pgsql:host=localhost;dbname=jqjobs_test;user=postgres',
+        'dsn' => 'pgsql:host=localhost;dbname=jqjobs_test;user=postgres'
+        #'dsn' => 'pgsql:host=' . getenv('dbhost') . ';port=' . getenv('dbport') . ';dbname=' . getenv('db') . ';user=' . getenv('dbuser') . ';' . getenv('dbpassdsn')
       ),
     ),
     'default' => 'jqjobs',
