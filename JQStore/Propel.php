@@ -15,6 +15,17 @@ class JQStore_Propel implements JQStore
     protected $options;
     protected $mutexInUse;
 
+    /**
+     * JQStore/Propel driver constructor.
+     *
+     * @param string Propel Object/Class name
+     * @param object PropelPDO
+     * @param array  OPTIONS:
+     *                  nextAlwaysWaitsForLock: If true, the next() call will wait for a lock on the DB rather than abort the dequeue attempt if the database is busy. DEFAULT: true
+     *                                          When true, you can always count on a worker getting a job if there is one. When false, it's possible that the worker is not able
+     *                                          to dequeue a job due to database load.
+     *                  ...
+     */
     public function __construct($propelClassName, $con, $options = array())
     {
         $this->propelClassName = $propelClassName;
@@ -22,6 +33,7 @@ class JQStore_Propel implements JQStore
         $this->mutexInUse = false;
 
         $this->options = array_merge(array(
+                                            'nextAlwaysWaitsForLock'    => true,
                                             'tableName'                 => 'JQStoreManagedJob',
                                             'jobIdColName'              => 'JOB_ID',
                                             'jobCoalesceIdColName'      => 'COALESCE_ID',
@@ -99,9 +111,15 @@ class JQStore_Propel implements JQStore
             // lock the table so we can be sure to get mutex access to "next" job
             // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
             // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
-            $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode;";
+            $nowait = ($this->options['nextAlwaysWaitsForLock'] ? '' : 'NOWAIT');
+            $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode {$nowait};";
             $this->con->query($lockSql);
+        } catch (PDOException $e) {
+            $this->con->rollback();
+            return $nextMJob;
+        }
 
+        try {
             // find "next" job
             $c = new Criteria;
             $c->add($this->options['jobStatusColName'], JQManagedJob::STATUS_QUEUED);
