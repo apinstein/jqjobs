@@ -246,6 +246,7 @@ class JQWorker
             // THUS in this case we care only if the DB thinks the job is checked out/running; if so, we just retry it.
             // Since we EXIT the script after this block, we don't have to worry about parallel universe collisions.
             // Note that to test this, we need to get the DB version of the job to know what's what.
+            $this->jqStore->abort();
             $persistedVersionOfJob = $this->jqStore->get($this->currentJob->getJobId());
             if ($persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
             {

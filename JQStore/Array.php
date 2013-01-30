@@ -104,4 +104,5 @@ class JQStore_Array implements JQStore
     {
         //print "JQStore [Job {$mJob->getJobId()}] {$oldStatus} ==> {$mJob->getStatus()} {$message}\n";
     }
+    public function abort() {}
 }

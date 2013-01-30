@@ -117,6 +117,11 @@ interface JQStore
      * @see JQJob::statusDidChange()
      */
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
+
+    /**
+     * This function will be called when a job is interrupted by a signal. The JQStore should abort any un-commited transactions to ensure that the core cleanup algorithm can perform properly.
+     */
+    function abort();
 }
 
 class JQStore_JobIsLockedException extends Exception {}
