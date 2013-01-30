@@ -239,11 +239,20 @@ class JQWorker
     {
         $this->log("Terminating immediately.");
         // try to fail job gracefully
-        if ($this->currentJob && $this->currentJob->getStatus() === JQManagedJob::STATUS_RUNNING)
+        if ($this->currentJob)
         {
-            $this->log("Failing job #{$this->currentJob->getJobId()}: {$this->currentJob->description()}");
-            $this->currentJob->markJobFailed("Worker was asked to terminate immediately.", true);
-            $this->log("Successfully marked job failed.");
+            // don't trust $this->currentJob; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
+            // during this time if there is a failure, the job is in an indeterminate state since PHP doesn't have un-interruptible blocks.
+            // THUS in this case we care only if the DB thinks the job is checked out/running; if so, we just retry it.
+            // Since we EXIT the script after this block, we don't have to worry about parallel universe collisions.
+            // Note that to test this, we need to get the DB version of the job to know what's what.
+            $persistedVersionOfJob = $this->jqStore->get($this->currentJob->getJobId());
+            if ($persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
+            {
+                $this->log("Failing job #{$this->currentJob->getJobId()}: {$this->currentJob->description()}");
+                $persistedVersionOfJob->markJobFailed("Worker was asked to terminate immediately.", true);
+                $this->log("Successfully marked job failed.");
+            }
         }
         // exit with non-zero return code
         exit(1);
