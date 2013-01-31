@@ -174,8 +174,8 @@ class JQWorker
                     else
                     {
                         $this->log("Sleeping for {$this->options['wakeupEvery']} seconds...");
-                        $ok = sleep($this->options['wakeupEvery']);
-                        $this->log('sleep: ' . var_export($ok, true));
+                        usleep(1000000*$this->options['wakeupEvery']);
+                        $this->log('usleep done: ');
                     }
                 }
             }
