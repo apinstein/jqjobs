@@ -73,6 +73,12 @@ class JQWorker
         }
     }
 
+    protected function logJobStatus($job, $msg, $verboseOnly = false)
+    {
+        $msg = "[Job: {$job->getJobId()} {$job->getStatus()} attempt {$job->getAttemptNumber()}/{$job->getMaxAttempts()}] {$msg}";
+        $this->log($msg, $verboseOnly);
+    }
+   
     protected function log($msg, $verboseOnly = false)
     {
         if ($this->options['silent']) return;
@@ -116,50 +122,63 @@ class JQWorker
         }
 
         $this->okToRun = true;
-        while ($this->okToRun) {
-            $this->memCheck();
-            $this->codeCheck();
+        try {
+            while ($this->okToRun) {
+                $this->memCheck();
+                $this->codeCheck();
 
-            $this->currentJob = $this->jqStore->next($this->options['queueName']);
-            if ($this->currentJob)
-            {
-                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()} attempt {$this->currentJob->getAttemptNumber()}/{$this->currentJob->getMaxAttempts()}] {$this->currentJob->description()}", true);
-                try {
-                    $result = $this->currentJob->run($this->currentJob);
-                } catch (JQWorker_SignalException $e) {
-                    $result = $e->getMessage();
-                    $this->gracefullyRetryCurrentJob();
-                    exit(self::EXIT_CODE_SIGNAL);
-                }
-                if ($result === NULL)
+                $this->currentJob = $this->jqStore->next($this->options['queueName']);
+                if ($this->currentJob)
                 {
-                    $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}]", true);
+                    $this->logJobStatus($this->currentJob, $this->currentJob->description(), true);
+
+                    try {
+                        $result = $this->currentJob->run($this->currentJob);
+
+                        if ($result === NULL)
+                        {
+                            $this->logJobStatus($this->currentJob, "Done!", true);
+                        }
+                        else
+                        {
+                            $this->logJobStatus($this->currentJob, $result);
+                        }
+
+                        $this->currentJob = NULL;
+                    } catch (JQWorker_SignalException $e) {
+                        $result = $e->getMessage();
+                        $this->logJobStatus($this->currentJob, "signal raised during job->run()");
+                        $this->gracefullyRetryCurrentJob($this->currentJob);
+                        $this->currentJob = NULL;
+                        throw $e;
+                    }
+
+                    $this->jobsProcessed++;
+                    if ($this->options['exitAfterNJobs'] && $this->jobsProcessed >= $this->options['exitAfterNJobs'])
+                    {
+                        break;
+                    }
                 }
                 else
                 {
-                    $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$result}");
-                }
-
-                $this->jobsProcessed++;
-                if ($this->options['exitAfterNJobs'] && $this->jobsProcessed >= $this->options['exitAfterNJobs'])
-                {
-                    break;
-                }
-            }
-            else
-            {
-                $this->log("No jobs available.");
-                if ($this->options['exitIfNoJobs'])
-                {
-                    $this->log("Exiting since exitIfNoJobs=true");
-                    break;
-                }
-                else
-                {
-                    $this->log("Sleeping for {$this->options['wakeupEvery']} seconds...");
-                    sleep($this->options['wakeupEvery']);
+                    $this->log("No jobs available.");
+                    if ($this->options['exitIfNoJobs'])
+                    {
+                        $this->log("Exiting since exitIfNoJobs=true");
+                        break;
+                    }
+                    else
+                    {
+                        $this->log("Sleeping for {$this->options['wakeupEvery']} seconds...");
+                        sleep($this->options['wakeupEvery']);
+                    }
                 }
             }
+        } catch (JQWorker_SignalException $e) {
+            $result = $e->getMessage();
+            $this->log("signal raised during run()");
+            $this->gracefullyRetryCurrentJob($this->currentJob);
+            exit(self::EXIT_CODE_SIGNAL);
         }
 
         $this->log("Stopping worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));
@@ -269,23 +288,23 @@ class JQWorker
      */
     protected function signalExceptionHandlerForGracefulShutdown($sigNo, $secondsToFinish)
     {
+        $this->log("Gracefully shutting down; will force hard shutdown in {$secondsToFinish} if necessary.");
+
         $this->stop();
 
-        if (!$this->currentJob) $this->signalExceptionHandlerForImmediateShutdown($sigNo);
-
         // schedule signal for immediate shudown in $secondsToFinish
-        $this->log("Giving job {$secondsToFinish} before hard shutdown.");
         pcntl_alarm($secondsToFinish);
 
         // eat signal -- job will continue on main thread when this re-entrant code ends w/o exit()
         return;
     }
 
-    private function gracefullyRetryCurrentJob()
+    private function gracefullyRetryCurrentJob($job)
     {
-        if ($this->currentJob)
+        if ($job)
         {
-            // don't trust $this->currentJob; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
+            $this->logJobStatus($job, "Gracefully re-trying current job due to signal interruption.");
+            // don't trust $job; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
             // during this time if there is a failure, the job is in an indeterminate state since PHP doesn't have un-interruptible blocks.
             // THUS in this case we care only if the DB thinks the job is checked out/running; if so, we just retry it.
             // Since we EXIT the script after this block, we don't have to worry about parallel universe collisions.
@@ -293,15 +312,16 @@ class JQWorker
             $this->jqStore->abort();
             $persistedVersionOfJob = NULL;
             try {
-                $persistedVersionOfJob = $this->jqStore->get($this->currentJob->getJobId());
+                $persistedVersionOfJob = $this->jqStore->get($job->getJobId());
             } catch (JQStore_JobNotFoundException $e) {
-                $this->currentJob = NULL;
+                $this->logJobStatus($job, "Completed job already persisted via JQStore.");
+                return;
             }
             if ($persistedVersionOfJob && $persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
             {
-                $this->log("Failing job #{$persistedVersionOfJob->getJobId()}: {$persistedVersionOfJob->description()}");
+                $this->logJobStatus($persistedVersionOfJob, "Failing job with mulligan.");
                 $persistedVersionOfJob->markJobFailed("Worker was asked to terminate immediately.", true);
-                $this->log("Successfully marked job failed.");
+                $this->logJobStatus($persistedVersionOfJob, "Successfully failed job with mulligan.");
             }
          }
     }
