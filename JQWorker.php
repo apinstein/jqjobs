@@ -22,6 +22,10 @@ class JQWorker
     private $currentJob = NULL;
     private $controlCAlready = false;
 
+    const EXIT_CODE_MEMORY = 1;
+    const EXIT_CODE_CODE_CHANGED = 2;
+    const EXIT_CODE_SIGNAL = 3;
+
     /**
      * Create a JQWorker.
      *
@@ -39,19 +43,21 @@ class JQWorker
      *              - exitAfterNJobs (int): The worker will exit after N jobs have been processed. Set to NULL to run forever. DEFAULT: NULL.
      *              - adjustPriority (int): An integer value used to adjust the priority (see proc_nice). Postive integers reduce priority. Negative integers increase priority (requires root).
      *                                      A adjustPriority of 10 is reasonable for background processes.
+     *              - gracefulShutdownTimeout (int): Number of seconds to allow jobs to finish before killing them forcefully. DEFAULT: 5.
      */
     public function __construct($jqStore, $options = array())
     {
         $this->jqStore = $jqStore;
         $this->options = array_merge(array(
-                                            'queueName'             => NULL,
-                                            'wakeupEvery'           => 5,
-                                            'verbose'               => false,
-                                            'silent'                => false,
-                                            'guaranteeMemoryForJob' => 0.2 * $this->getMemoryLimitInBytes(),
-                                            'exitIfNoJobs'          => false,
-                                            'exitAfterNJobs'        => NULL,
-                                            'adjustPriority'        => NULL,
+                                            'queueName'                 => NULL,
+                                            'wakeupEvery'               => 5,
+                                            'verbose'                   => false,
+                                            'silent'                    => false,
+                                            'guaranteeMemoryForJob'     => 0.2 * $this->getMemoryLimitInBytes(),
+                                            'exitIfNoJobs'              => false,
+                                            'exitAfterNJobs'            => NULL,
+                                            'adjustPriority'            => NULL,
+                                            'gracefulShutdownTimeout'   => 5,
                                           ),
                                      $options
                                     );
@@ -61,7 +67,7 @@ class JQWorker
         declare(ticks = 1);
         if (function_exists('pcntl_signal'))
         {
-            foreach (array(SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM) as $signal) {
+            foreach (array(SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM, SIGALRM) as $signal) {
                 pcntl_signal($signal, array($this, 'signalHandler'));
             }
         }
@@ -118,7 +124,13 @@ class JQWorker
             if ($this->currentJob)
             {
                 $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()} attempt {$this->currentJob->getAttemptNumber()}/{$this->currentJob->getMaxAttempts()}] {$this->currentJob->description()}", true);
-                $result = $this->currentJob->run($this->currentJob);
+                try {
+                    $result = $this->currentJob->run($this->currentJob);
+                } catch (JQWorker_SignalException $e) {
+                    $result = $e->getMessage();
+                    $this->gracefullyRetryCurrentJob();
+                    exit(self::EXIT_CODE_SIGNAL);
+                }
                 if ($result === NULL)
                 {
                     $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}]", true);
@@ -176,7 +188,7 @@ class JQWorker
         if ( $remaining < $this->options['guaranteeMemoryForJob'] )
         {
             $this->log("JQWorker doesn't have enough memory remaining ({$remaining}) required for next job ({$this->options['guaranteeMemoryForJob']}).");
-            exit(1);
+            exit(self::EXIT_CODE_MEMORY);
         }
     }
 
@@ -196,7 +208,7 @@ class JQWorker
             if ($dts != filemtime($includedFile))
             {
                 $this->log("JQWorker exiting since we detected updated code in {$includedFile}.");
-                exit(1);
+                exit(self::EXIT_CODE_CODE_CHANGED);
             }
         }
     }
@@ -205,40 +217,72 @@ class JQWorker
     {
         $this->log("Signal {$sigNo} received.");
         switch ($sigNo) {
-        case SIGTERM:
-        case SIGQUIT:
-        case SIGABRT:
-            $this->stopImmediately();
-            break;
-        case SIGHUP:
-            $this->log("HUP received; will gracefully exit. Your supervisor process should auto-restart the worker.");
-            $this->stop();
-            break;
-        case SIGINT:
-            if ($this->controlCAlready)
-            {
-                $this->log("SIGINT received again; terminating immediately.");
-                $this->stopImmediately();
-            }
-            else
-            {
-                $this->log("SIGINT received; will exit after current job finishes. To exit immediatley, control-c again.");
-                $this->controlCAlready = true;
+            case SIGALRM:
+                $this->signalExceptionHandlerForImmediateShutdown($sigNo);
+                break;
+            case SIGTERM:
+            case SIGQUIT:
+            case SIGABRT:
+                $this->signalExceptionHandlerForGracefulShutdown($sigNo, $this->options['gracefulShutdownTimeout']);
+                break;
+            case SIGHUP:
+                $this->log("HUP received; will gracefully exit. Your supervisor process should auto-restart the worker.");
                 $this->stop();
+                break;
+            case SIGINT:
+                if ($this->controlCAlready)
+                {
+                    $this->log("SIGINT received again; terminating immediately.");
+                    $this->signalExceptionHandlerForImmediateShutdown($sigNo);
+                }
+                else
+                {
+                    $this->log("SIGINT received; will exit after current job finishes. To exit immediatley, control-c again.");
+                    $this->controlCAlready = true;
+                    $this->stop();
+                }
+                break;
+            default:
+                // ignore
             }
-            break;
-        default:
-            // ignore
-        }
     }
 
     /**
      * FAILS the current job and exit immediately.
+     *
+     * This will ask the JQStore to retry the job without affecting the remaining number of retries.
+     *
+     * Note that you do need enough time to hit the JQStore backend to persist the proper job failure state.
      */
-    public function stopImmediately()
+    protected function signalExceptionHandlerForImmediateShutdown($sigNo)
     {
         $this->log("Terminating immediately.");
-        // try to fail job gracefully
+        if ($this->currentJob)
+        {
+            throw new JQWorker_SignalException("Caught signal {$sigNo}, forcing immediate job termination.", $sigNo);
+        }
+        exit(self::EXIT_CODE_SIGNAL);
+    }
+
+    /**
+     * Give the current job up to N seconds to finish before forcing a shutdown.
+     */
+    protected function signalExceptionHandlerForGracefulShutdown($sigNo, $secondsToFinish)
+    {
+        $this->stop();
+
+        if (!$this->currentJob) $this->signalExceptionHandlerForImmediateShutdown($sigNo);
+
+        // schedule signal for immediate shudown in $secondsToFinish
+        $this->log("Giving job {$secondsToFinish} before hard shutdown.");
+        pcntl_alarm($secondsToFinish);
+
+        // eat signal -- job will continue on main thread when this re-entrant code ends w/o exit()
+        return;
+    }
+
+    private function gracefullyRetryCurrentJob()
+    {
         if ($this->currentJob)
         {
             // don't trust $this->currentJob; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
@@ -259,9 +303,7 @@ class JQWorker
                 $persistedVersionOfJob->markJobFailed("Worker was asked to terminate immediately.", true);
                 $this->log("Successfully marked job failed.");
             }
-        }
-        // exit with non-zero return code
-        exit(1);
+         }
     }
 
     /**
@@ -271,7 +313,7 @@ class JQWorker
     {
         $this->okToRun = false;
         $this->log("Stop requested for worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']), true);
-        return true;
     }
 }
 
+class JQWorker_SignalException extends Exception {}

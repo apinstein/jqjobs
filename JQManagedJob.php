@@ -454,6 +454,11 @@ final class JQManagedJob implements JQJob
         $err = NULL;
         try {
             $disposition = $this->job->run($this);
+        } catch (JQWorker_SignalException $e) {
+            // NOTE: a signal interrupts any line of code; from the try/catch above thru the cleanup code below
+            // we throw here so that the same workflow can be used for errors in the try/catch and outsie of it
+            // that way all signal handling during job execution is handled in one path, in the JQWorker.
+            throw $e;
         } catch (Exception $e) {
             $err = $e->getMessage();
             $disposition = self::STATUS_FAILED;
