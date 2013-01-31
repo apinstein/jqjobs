@@ -12,6 +12,8 @@
  */
 class JQWorker
 {
+    public $workerId = NULL;
+
     protected $jqStore;
     protected $options;
     protected $okToRun = true;
@@ -47,6 +49,7 @@ class JQWorker
      */
     public function __construct($jqStore, $options = array())
     {
+        $this->workerId = uniqid();
         $this->jqStore = $jqStore;
         $this->options = array_merge(array(
                                             'queueName'                 => NULL,
@@ -62,6 +65,7 @@ class JQWorker
                                      $options
                                     );
         $this->pid = getmypid();
+        $this->log("pid = {$this->pid}");
 
         // install signal handlers if possible
         declare(ticks = 1);
@@ -83,7 +87,7 @@ class JQWorker
     {
         if ($this->options['silent']) return;
         if ($verboseOnly and !$this->options['verbose']) return;
-        print "[{$this->pid}] {$msg}\n";
+        print "[Worker: {$this->workerId}] {$msg}\n";
     }
 
     public function jobsProcessed()
