@@ -125,3 +125,4 @@ interface JQStore
 }
 
 class JQStore_JobIsLockedException extends Exception {}
+class JQStore_JobNotFoundException extends Exception {}

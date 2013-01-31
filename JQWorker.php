@@ -247,10 +247,15 @@ class JQWorker
             // Since we EXIT the script after this block, we don't have to worry about parallel universe collisions.
             // Note that to test this, we need to get the DB version of the job to know what's what.
             $this->jqStore->abort();
-            $persistedVersionOfJob = $this->jqStore->get($this->currentJob->getJobId());
-            if ($persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
+            $persistedVersionOfJob = NULL;
+            try {
+                $persistedVersionOfJob = $this->jqStore->get($this->currentJob->getJobId());
+            } catch (JQStore_JobNotFoundException $e) {
+                $this->currentJob = NULL;
+            }
+            if ($persistedVersionOfJob && $persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
             {
-                $this->log("Failing job #{$this->currentJob->getJobId()}: {$this->currentJob->description()}");
+                $this->log("Failing job #{$persistedVersionOfJob->getJobId()}: {$persistedVersionOfJob->description()}");
                 $persistedVersionOfJob->markJobFailed("Worker was asked to terminate immediately.", true);
                 $this->log("Successfully marked job failed.");
             }

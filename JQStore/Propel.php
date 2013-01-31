@@ -177,7 +177,7 @@ class JQStore_Propel implements JQStore
     private function getDbJob($jobId)
     {
         $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'retrieveByPK'), $jobId, $this->con);
-        if (!$dbJob) throw new Exception("Couldn't find jobId {$jobId} in database.");
+        if (!$dbJob) throw new JQStore_JobNotFoundException("Couldn't find jobId {$jobId} in database.");
         return $dbJob;
     }
 
