@@ -351,6 +351,8 @@ class JQWorker
      */
     public static function burn($seconds)
     {
+        time_nanosleep($seconds, 0);
+        return;
         $timeStart = microtime(true);
         $timeEnd   = $timeStart + $seconds;
         while (microtime(true) < $timeEnd)
