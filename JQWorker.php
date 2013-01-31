@@ -173,9 +173,9 @@ class JQWorker
                     }
                     else
                     {
-                        $this->log("Sleeping for {$this->options['wakeupEvery']} seconds...");
-                        usleep(1000000*$this->options['wakeupEvery']);
-                        $this->log('usleep done: ');
+                        $this->log("Burning time for {$this->options['wakeupEvery']} seconds...");
+                        JQWorker::burn($this->options['wakeupEvery']);
+                        $this->log('Done burning time');
                     }
                 }
             }
@@ -338,6 +338,27 @@ class JQWorker
     {
         $this->okToRun = false;
         $this->log("Stop requested for worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']), true);
+    }
+
+    /**
+     * A replacement for sleep that plays nicely with signals.
+     *
+     * On Heroku, since each app is sandboxed, there is very little entropy
+     * available to each dyno, so sleep tends to not wake up in time--sometimes
+     * several seconds late. So instead, we simply burn the CPU in a while loop
+     * so that we'll return when expected and handle interrupts the same way we
+     * handle them elsewhere.
+     */
+    public static function burn($seconds)
+    {
+        $timeStart = microtime(true);
+        $timeEnd   = $timeStart + $seconds;
+        while (microtime(true) < $timeEnd)
+        {
+          // Sit on hands.
+        }
+
+        return 0;  // To be similar to sleep()
     }
 }
 
