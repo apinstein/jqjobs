@@ -273,7 +273,14 @@ final class JQManagedJob implements JQJob
         $this->status = $newStatus;
 
         // inform interested parties of status change
-        $this->statusDidChange($this, $oldStatus, $this->errorMessage);
+        try {
+            $this->statusDidChange($this, $oldStatus, $this->errorMessage);
+        } catch (JQWorker_SignalException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            // @todo we need a logger here?
+            print "Userland statusDidChange() reported an error: {$e->getMessage()}";
+        }
     }
 
     public function getQueueName()
