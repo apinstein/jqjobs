@@ -19,6 +19,8 @@ Features
 * Auto-retry failed jobs.
 * Good test coverage.
 * Utility class JQDelayedJob makes it trivial to run php code after the script exits. This is a great way to defer things like logging to after the request is handled for a more performant application.
+* Optional jitter for high-concurrency situations
+* Robust signal handling, including graceful shutdown on SIGTERM
 
 Roadmap
 * Queue admin tool (cli & gui)
