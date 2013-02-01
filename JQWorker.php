@@ -183,8 +183,7 @@ class JQWorker
                     else
                     {
                         $this->log("Burning time for {$this->options['wakeupEvery']} seconds...");
-                        JQWorker::burn($this->options['wakeupEvery']);
-                        $this->log('Done burning time');
+                        JQWorker::sleep($this->options['wakeupEvery']);
                     }
                 }
             }
@@ -360,26 +359,19 @@ class JQWorker
     }
 
     /**
-     * A replacement for sleep that plays nicely with signals.
+     * An interal version of sleep that we guarantee to not interfere with signals or have trouble waking up on time.
+     *
+     * Some versions of sleep/usleep rely on system entropy to exit cleanly.
      *
      * On Heroku, since each app is sandboxed, there is very little entropy
      * available to each dyno, so sleep tends to not wake up in time--sometimes
-     * several seconds late. So instead, we simply burn the CPU in a while loop
-     * so that we'll return when expected and handle interrupts the same way we
-     * handle them elsewhere.
+     * several seconds late. 
+     *
+     * time_nanosleep seems to be immune from these issues.
      */
-    public static function burn($seconds)
+    public static function sleep($seconds)
     {
         time_nanosleep($seconds, 0);
-        return;
-        $timeStart = microtime(true);
-        $timeEnd   = $timeStart + $seconds;
-        while (microtime(true) < $timeEnd)
-        {
-          // Sit on hands.
-        }
-
-        return 0;  // To be similar to sleep()
     }
 }
 
