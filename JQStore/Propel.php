@@ -264,8 +264,10 @@ class JQStore_Propel implements JQStore
 
     public function abort()
     {
+        // delete this while() block once we are comfortable empiricaly that this is true
         while ($this->con->isInTransaction())
         {
+            throw new Exception("abort() called while transaction in progress, shouldn't happen anymore.");
             $this->con->rollback();
         }
         call_user_func(array("{$this->propelClassName}Peer", 'clearInstancePool'));
