@@ -14,6 +14,7 @@ class JQStore_Propel implements JQStore
     protected $propelClassName;
     protected $options;
     protected $mutexInUse;
+    protected $autoscaler;
 
     /**
      * JQStore/Propel driver constructor.
@@ -31,6 +32,7 @@ class JQStore_Propel implements JQStore
         $this->propelClassName = $propelClassName;
         $this->con = $con;
         $this->mutexInUse = false;
+        $this->autoscaler = NULL;
 
         $this->options = array_merge(array(
                                             'nextAlwaysWaitsForLock'    => true,
@@ -42,7 +44,7 @@ class JQStore_Propel implements JQStore
                                             'jobPriorityColName'        => 'PRIORITY',
                                             'jobStartDtsColName'        => 'START_DTS',
                                             'jobEndDtsColName'          => 'END_DTS',
-                                            'toArrayOptions'            => array('dtsFormat' => 'r')
+                                            'toArrayOptions'            => array('dtsFormat' => 'r'),
                                           ),
                                      $options
                                     );
@@ -51,6 +53,16 @@ class JQStore_Propel implements JQStore
         foreach (array('jobIdColName', 'jobQueueNameColName', 'jobStatusColName', 'jobPriorityColName', 'jobStartDtsColName', 'jobEndDtsColName') as $colName) {
             $this->options[$colName] = eval("return {$this->propelClassName}Peer::{$this->options[$colName]};");
         }
+    }
+
+    /**
+     * Enable an autoscaler.
+     *
+     * @param object JQAutoscaler
+     */
+    public function setAutoscaler(JQAutoscaler $as)
+    {
+        $this->autoscaler = $as;
     }
 
     public function enqueue(JQJob $job, $options = array())
@@ -85,7 +97,7 @@ class JQStore_Propel implements JQStore
                 
                 $dbJob = new $this->propelClassName;
                 $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
-                $dbJob->save($this->con);
+                $this->saveDBJob($dbJob, $this->con);
  
                 $mJob->setJobId($dbJob->getJobId());
             }
@@ -253,7 +265,27 @@ class JQStore_Propel implements JQStore
     {
         $dbJob = $this->getDbJob($mJob->getJobId());
         $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
-        $dbJob->save($this->con);
+        $this->saveDBJob($dbJob, $this->con);
+    }
+
+    /**
+     * Should be used to call the Propel save() function *always* so that we can integrate with autoscaler correctly.
+     */
+    private function saveDBJob($dbJob, $con)
+    {
+        $saverF = function() use ($dbJob, $con) {
+            $dbJob->save($con);
+        };
+
+        // @todo $dbJob->getStatus() should use Propel map functions to use $this->options['jobStatusColName']
+        if ($this->autoscaler && $dbJob->getStatus() === JQManagedJob::STATUS_QUEUED)
+        {
+            $this->autoscaler->wrapThingAffectingQueuedJobCount($saverF);
+        }
+        else
+        {
+            $saverF();
+        }
     }
 
     public function delete(JQManagedJob $mJob)
@@ -279,5 +311,4 @@ class JQStore_Propel implements JQStore
      * No action by default; subclass and override if you want JQStore-wide logging, etc.
      */
     public function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
-
 }

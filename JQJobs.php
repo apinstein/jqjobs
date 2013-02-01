@@ -63,3 +63,8 @@ require_once dirname(__FILE__) . '/JQStore/Propel.php';
 
 require_once dirname(__FILE__) . '/JQWorker.php';
 
+require_once dirname(__FILE__) . '/JQAutoscaler.php';
+require_once dirname(__FILE__) . '/JQScalable.php';
+require_once dirname(__FILE__) . '/JQScalable/Noop.php';
+require_once dirname(__FILE__) . '/JQScalable/Heroku.php';
+
