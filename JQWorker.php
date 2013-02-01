@@ -65,7 +65,7 @@ class JQWorker
                                             'exitAfterNJobs'            => NULL,
                                             'adjustPriority'            => NULL,
                                             'gracefulShutdownTimeout'   => 5,
-                                            'enableJitter'              => false,
+                                            'enableJitter'              => true,
                                           ),
                                      $options
                                     );
@@ -127,9 +127,9 @@ class JQWorker
 
         if ($this->options['enableJitter'])
         {
-            $s = rand(0,3);
-            $this->log("Start jitter: {$s} seconds...");
-            JQWorker::sleep($s);
+            $ms = rand(0, 1000);
+            $this->log("Startup jitter: 0.{$ms} seconds...");
+            JQWorker::sleep(0, $ms * 1000000);
         }
 
         if (isset($this->options['adjustPriority']))
@@ -192,13 +192,13 @@ class JQWorker
                     else
                     {
                         $s = $this->options['wakeupEvery'];
-                        $ns = 0;
+                        $ms = 0;
                         if ($this->options['enableJitter'])
                         {
-                            $ns = rand(0, 1000) * 1000000; // 0-1000ms
+                            $ms = rand(0, 1000);
                         }
-                        $this->log("Sleeping for {$s}.{$ns} seconds...");
-                        JQWorker::sleep($s, $ns);
+                        $this->log("Sleeping for {$s}.{$ms} seconds...");
+                        JQWorker::sleep($s, $ms * 1000000);
                     }
                 }
             }
