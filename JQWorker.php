@@ -21,6 +21,9 @@ class JQWorker
     protected $jobsProcessed = 0;
     protected $allIncludedFiles = NULL;
 
+    // will be non-null if we are currently in a signal handler
+    private $currentSignalNo = NULL;
+
     private $currentJob = NULL;
     private $controlCAlready = false;
 
@@ -149,12 +152,18 @@ class JQWorker
                         }
 
                         $this->currentJob = NULL;
-                    } catch (JQWorker_SignalException $e) {
+                    } catch (Exception $e) {
+                        if ($this->currentSignalNo === NULL) throw $e;  // we only handle signals here
+
+                        // This block helps JQJobs minimize the incidence of jobs getting stuck in the "running" state
+                        // It is designed to catch exceptions from JQJob->run() trying to record a finished ActualJob->run() disposition to JQStore
+                        // although the job might've finished, we couldn't tell JQStore, thus the loop can't be closed
+                        // Therefore, we will gracefullyRetryCurrentJob() so that it can run again another day and close out the loop gracefully
                         $result = $e->getMessage();
                         $this->logJobStatus($this->currentJob, "signal raised during job->run()");
                         $this->gracefullyRetryCurrentJob($this->currentJob);
                         $this->currentJob = NULL;
-                        throw $e;
+                        // now that we've cleaned up, the run loop will gracefully exit
                     }
 
                     $this->jobsProcessed++;
@@ -179,7 +188,12 @@ class JQWorker
                     }
                 }
             }
-        } catch (JQWorker_SignalException $e) {
+        } catch (Exception $e) {
+            if ($this->currentSignalNo === NULL) throw $e;  // we only handle signals here
+
+            // This block helps JQJobs minimize the incidence of jobs getting stuck in the "running" state
+            // It is designed to catch jobs that have been checked out but not yet run when a signal fires
+            // Therefore, we will gracefullyRetryCurrentJob() so that it can run again another day and close out the loop gracefully
             $result = $e->getMessage();
             $this->log("signal raised during run()");
             $this->gracefullyRetryCurrentJob($this->currentJob);
@@ -239,7 +253,9 @@ class JQWorker
 
     public function signalHandler($sigNo)
     {
+        $this->currentSignalNo = $sigNo;
         $this->log("Signal {$sigNo} received.");
+
         switch ($sigNo) {
             case SIGALRM:
                 $this->signalExceptionHandlerForImmediateShutdown($sigNo);
@@ -268,7 +284,10 @@ class JQWorker
                 break;
             default:
                 // ignore
-            }
+        }
+
+        // if we got here, the signal handler decided to eat the signal
+        $this->currentSignalNo = NULL;
     }
 
     /**
@@ -364,4 +383,7 @@ class JQWorker
     }
 }
 
+// NOTE: php can transform exceptions; ie PDO will catch JQWorker_SignalException and convert it to a PDOException with JQWorker_SignalException as the previous exception
+// We might consider not having a special subclass for this since we can't count on it and intead really we need to just use our worker-level "currentSignalNo" flag to dectect
+// whether we're in a signal handler
 class JQWorker_SignalException extends Exception {}

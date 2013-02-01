@@ -454,6 +454,7 @@ final class JQManagedJob implements JQJob
         if ($this->isRunningLock) throw new Exception("Local run lock already in use... can't run a job twice.");
         $this->isRunningLock = true;
 
+        // @todo this register_shutdown_function can happen n times, bad
         register_shutdown_function(array($this, 'checkShutdownForFatalErrors'));
         set_error_handler(array($this, 'phpErrorToException'), self::HANDLED_ERRORS);
 
