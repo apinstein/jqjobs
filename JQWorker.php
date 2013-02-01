@@ -49,6 +49,7 @@ class JQWorker
      *              - adjustPriority (int): An integer value used to adjust the priority (see proc_nice). Postive integers reduce priority. Negative integers increase priority (requires root).
      *                                      A adjustPriority of 10 is reasonable for background processes.
      *              - gracefulShutdownTimeout (int): Number of seconds to allow jobs to finish before killing them forcefully. DEFAULT: 5.
+     *              - enableJitter (boolean): Intruduces slight time jitter on start and sleep to prevent accidental DOS/resonance in high-concurrency situations
      */
     public function __construct($jqStore, $options = array())
     {
@@ -64,6 +65,7 @@ class JQWorker
                                             'exitAfterNJobs'            => NULL,
                                             'adjustPriority'            => NULL,
                                             'gracefulShutdownTimeout'   => 5,
+                                            'enableJitter'              => false,
                                           ),
                                      $options
                                     );
@@ -122,6 +124,13 @@ class JQWorker
     public function start()
     {
         $this->log("Starting worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));;
+
+        if ($this->options['enableJitter'])
+        {
+            $s = rand(0,3);
+            $this->log("Start jitter: {$s} seconds...");
+            JQWorker::sleep($s);
+        }
 
         if (isset($this->options['adjustPriority']))
         {
@@ -182,8 +191,14 @@ class JQWorker
                     }
                     else
                     {
-                        $this->log("Burning time for {$this->options['wakeupEvery']} seconds...");
-                        JQWorker::sleep($this->options['wakeupEvery']);
+                        $s = $this->options['wakeupEvery'];
+                        $ns = 0;
+                        if ($this->options['enableJitter'])
+                        {
+                            $ns = rand(0, 1000) * 1000000; // 0-1000ms
+                        }
+                        $this->log("Sleeping for {$s}.{$ns} seconds...");
+                        JQWorker::sleep($s, $ns);
                     }
                 }
             }
@@ -369,9 +384,9 @@ class JQWorker
      *
      * time_nanosleep seems to be immune from these issues.
      */
-    public static function sleep($seconds)
+    public static function sleep($seconds, $nanoSeconds = 0)
     {
-        time_nanosleep($seconds, 0);
+        time_nanosleep($seconds, $nanoSeconds);
     }
 }
 
