@@ -14,6 +14,7 @@
     <column name="queue_name" phpName="QueueName" type="LONGVARCHAR" required="false"/>
     <column name="start_dts" phpName="StartDts" type="TIMESTAMP" required="false"/>
     <column name="status" phpName="Status" type="LONGVARCHAR" required="false"/>
+    <column name="work_factor" phpName="WorkFactor" type="INTEGER" required="false"/>
     <unique name="idx_jqstore_managed_job_coalesce">
       <unique-column name="coalesce_id"/>
     </unique>

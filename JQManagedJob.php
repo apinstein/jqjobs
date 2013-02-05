@@ -52,6 +52,11 @@ final class JQManagedJob implements JQJob
      */
     protected $priority;
     /**
+     * @var integer workFactor An opaque (to JQJobs) measure of how much work the job represents. Workers can be configured to only accept jobs with certain work factors, making
+     *                         it possible to configure sets of workers to assure QoS metrics for job processing. Default 0.
+     */
+    protected $workFactor;
+    /**
      * @var int The maximum number of attempts that a job can have before it should be failed.
      */
     protected $maxAttempts;
@@ -89,6 +94,7 @@ final class JQManagedJob implements JQJob
      * @param array Options for the job:
      *              startDts:       object DateTime - do not start job before this time, default NULL (asap)
      *              priority:       int             - priority of the job, default 0
+     *              workFactor:     int             - work factor of the job, default 0
      *              maxAttempts:    int             - maximum number of attempts allowed for this job, default 1
      *              queueName:      string          - the queueName to associate this job with
      *       deleteOnComplete:      boolean         - delete the job when done? default false
@@ -99,6 +105,7 @@ final class JQManagedJob implements JQJob
         $this->creationDts = new DateTime();
         $this->status = JQManagedJob::STATUS_UNQUEUED;
         $this->priority = 0;
+        $this->workFactor = 0;
         $this->maxAttempts = 1;
         $this->attemptNumber = 0;
 
@@ -109,6 +116,10 @@ final class JQManagedJob implements JQJob
         if (isset($options['priority']))
         {
             $this->priority = $options['priority'];
+        }
+        if (isset($options['workFactor']))
+        {
+            $this->workFactor = $options['workFactor'];
         }
         if (isset($options['maxAttempts']))
         {
@@ -138,6 +149,7 @@ final class JQManagedJob implements JQJob
             'maxAttempts',
             'attemptNumber',
             'priority',
+            'workFactor',
             'errorMessage'
         );
     }
@@ -512,6 +524,31 @@ final class JQManagedJob implements JQJob
     {
         if (!($this->job instanceof JQJob)) return "Job Id {$this->jobId}: JQManagedJob.job is empty.";
         return $this->job->description();
+    }
+
+    /**
+     * Helper function to determine whether a job is acceptable for the given minWorkFactor and maxWorkFactor limits.
+     *
+     * @param integer Min work factor limit (inclusive)
+     * @param integer Max work factor limit (inclusive)
+     * @return boolean True if it's acceptable for the passed limits.
+     */
+    public function isAcceptableWorkFactor($min, $max)
+    {
+        if ($this->workFactor === NULL) return true;
+
+        if ($min === NULL)
+        {
+            $min = 0;
+        }
+        if ($max === NULL)
+        {
+            $max = PHP_INT_MAX;
+        }
+
+        if ($this->workFactor >= $min && $this->workFactor <= $max) return true;
+
+        return false;
     }
 }
 

@@ -173,6 +173,12 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, $q->count('test'));
     }
 
+    function testJQWorkerDoesNotAllowMaxWorkFactorLessThanMinWorkFactor()
+    {
+        $this->setExpectedException('Exception');
+        $w = new JQWorker($q, array('minWorkFactor' => 6, 'maxWorkFactor' => 5));
+    }
+
     /**
      * @testdox JQJobs does not attempt to coalesce a job with a NULL coalesceId
      */

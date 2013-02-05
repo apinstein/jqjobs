@@ -48,10 +48,10 @@ class JQStore_Array implements JQStore
         return NULL;
     }
 
-    public function next($queueName = NULL)
+    public function next($queueName = NULL, $minWorkFactor = NULL, $maxWorkFactor = NULL)
     {
         foreach ($this->queue as $dbJob) {
-            if ($dbJob->getStatus() === JQManagedJob::STATUS_QUEUED && $dbJob->getQueueName() === $queueName)
+            if ($dbJob->getStatus() === JQManagedJob::STATUS_QUEUED && $dbJob->getQueueName() === $queueName && $dbJob->isAcceptableWorkFactor($minWorkFactor, $maxWorkFactor))
             {
                 $dbJob->markJobStarted();
                 // no locking needed for in-process queue

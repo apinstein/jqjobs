@@ -28,6 +28,7 @@ class JQStore_Propel implements JQStore
                                             'jobQueueNameColName'       => 'QUEUE_NAME',
                                             'jobStatusColName'          => 'STATUS',
                                             'jobPriorityColName'        => 'PRIORITY',
+                                            'jobWorkFactorColName'      => 'WORK_FACTOR',
                                             'jobStartDtsColName'        => 'START_DTS',
                                             'jobEndDtsColName'          => 'END_DTS',
                                             'toArrayOptions'            => array('dtsFormat' => 'r')
@@ -36,7 +37,7 @@ class JQStore_Propel implements JQStore
                                     );
         // eval propel constants, thanks php 5.2 :( On 5.3 I think we can do $this->propelClassName::TABLE_NAME etc...
         $this->options['tableName'] = eval("return {$this->propelClassName}Peer::TABLE_NAME;");
-        foreach (array('jobIdColName', 'jobQueueNameColName', 'jobStatusColName', 'jobPriorityColName', 'jobStartDtsColName', 'jobEndDtsColName') as $colName) {
+        foreach (array('jobIdColName', 'jobQueueNameColName', 'jobStatusColName', 'jobPriorityColName', 'jobWorkFactorColName', 'jobStartDtsColName', 'jobEndDtsColName') as $colName) {
             $this->options[$colName] = eval("return {$this->propelClassName}Peer::{$this->options[$colName]};");
         }
     }
@@ -90,7 +91,7 @@ class JQStore_Propel implements JQStore
         return $this->getByCoalesceId($coalesceId);
     }
 
-    public function next($queueName = NULL)
+    public function next($queueName = NULL, $minWorkFactor = NULL, $maxWorkFactor = NULL)
     {
         $nextMJob = NULL;
 
@@ -106,6 +107,15 @@ class JQStore_Propel implements JQStore
             $c = new Criteria;
             $c->add($this->options['jobStatusColName'], JQManagedJob::STATUS_QUEUED);
             $c->add($this->options['jobStartDtsColName'], "({$this->options['jobStartDtsColName']} is null OR {$this->options['jobStartDtsColName']} < now())", Criteria::CUSTOM);
+            xdebug_break();
+            if ($minWorkFactor !== NULL)
+            {
+                $c->add($this->options['jobWorkFactorColName'], $minWorkFactor, Criteria::GREATER_EQUAL);
+            }
+            if ($maxWorkFactor !== NULL)
+            {
+                $c->add($this->options['jobWorkFactorColName'], $maxWorkFactor, Criteria::LESS_EQUAL);
+            }
             $c->addDescendingOrderByColumn($this->options['jobPriorityColName']);
             $c->addAscendingOrderByColumn("coalesce(now(), {$this->options['jobStartDtsColName']})");    // jobs with no start date should be treated as "start now"
             $c->addAscendingOrderByColumn($this->options['jobIdColName']);
