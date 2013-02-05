@@ -127,7 +127,7 @@ class JQWorker
 
         if ($this->options['enableJitter'])
         {
-            $ms = rand(0, 1000);
+            $ms = rand(0, 999);
             $this->log("Startup jitter: 0.{$ms} seconds...");
             JQWorker::sleep(0, $ms * 1000000);
         }
@@ -195,7 +195,7 @@ class JQWorker
                         $ms = 0;
                         if ($this->options['enableJitter'])
                         {
-                            $ms = rand(0, 1000);
+                            $ms = rand(0, 999);
                         }
                         $this->log("Sleeping for {$s}.{$ms} seconds...");
                         JQWorker::sleep($s, $ms * 1000000);
@@ -386,6 +386,10 @@ class JQWorker
      */
     public static function sleep($seconds, $nanoSeconds = 0)
     {
+        // sanitize input
+        $seconds = max(0, $seconds);
+        $nanoSeconds = max(0, $nanoSeconds);
+        $nanoSeconds = min(999999999, $nanoSeconds);
         time_nanosleep($seconds, $nanoSeconds);
     }
 }
