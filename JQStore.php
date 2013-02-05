@@ -122,6 +122,11 @@ interface JQStore
      * This function will be called when a job is interrupted by a signal. The JQStore should abort any un-commited transactions to ensure that the core cleanup algorithm can perform properly.
      */
     function abort();
+
+    /**
+     * This function should iterate all running jobs, retrying (with mulligan) any jobs that are isPastMaxRuntimeSeconds()
+     */
+    function detectHungJobs();
 }
 
 class JQStore_JobIsLockedException extends Exception {}

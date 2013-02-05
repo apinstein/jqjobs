@@ -73,6 +73,12 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	protected $max_attempts;
 
 	/**
+	 * The value for the max_runtime_seconds field.
+	 * @var        int
+	 */
+	protected $max_runtime_seconds;
+
+	/**
 	 * The value for the priority field.
 	 * @var        int
 	 */
@@ -234,6 +240,16 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	public function getMaxAttempts()
 	{
 		return $this->max_attempts;
+	}
+
+	/**
+	 * Get the [max_runtime_seconds] column value.
+	 * 
+	 * @return     int
+	 */
+	public function getMaxRuntimeSeconds()
+	{
+		return $this->max_runtime_seconds;
 	}
 
 	/**
@@ -464,6 +480,26 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 	} // setMaxAttempts()
 
 	/**
+	 * Set the value of [max_runtime_seconds] column.
+	 * 
+	 * @param      int $v new value
+	 * @return     JQStoreManagedJob The current object (for fluent API support)
+	 */
+	public function setMaxRuntimeSeconds($v)
+	{
+		if ($v !== null) {
+			$v = (int) $v;
+		}
+
+		if ($this->max_runtime_seconds !== $v) {
+			$this->max_runtime_seconds = $v;
+			$this->modifiedColumns[] = JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS;
+		}
+
+		return $this;
+	} // setMaxRuntimeSeconds()
+
+	/**
 	 * Set the value of [priority] column.
 	 * 
 	 * @param      int $v new value
@@ -585,10 +621,11 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 			$this->job = ($row[$startcol + 5] !== null) ? (string) $row[$startcol + 5] : null;
 			$this->job_id = ($row[$startcol + 6] !== null) ? (int) $row[$startcol + 6] : null;
 			$this->max_attempts = ($row[$startcol + 7] !== null) ? (int) $row[$startcol + 7] : null;
-			$this->priority = ($row[$startcol + 8] !== null) ? (int) $row[$startcol + 8] : null;
-			$this->queue_name = ($row[$startcol + 9] !== null) ? (string) $row[$startcol + 9] : null;
-			$this->start_dts = ($row[$startcol + 10] !== null) ? (string) $row[$startcol + 10] : null;
-			$this->status = ($row[$startcol + 11] !== null) ? (string) $row[$startcol + 11] : null;
+			$this->max_runtime_seconds = ($row[$startcol + 8] !== null) ? (int) $row[$startcol + 8] : null;
+			$this->priority = ($row[$startcol + 9] !== null) ? (int) $row[$startcol + 9] : null;
+			$this->queue_name = ($row[$startcol + 10] !== null) ? (string) $row[$startcol + 10] : null;
+			$this->start_dts = ($row[$startcol + 11] !== null) ? (string) $row[$startcol + 11] : null;
+			$this->status = ($row[$startcol + 12] !== null) ? (string) $row[$startcol + 12] : null;
 			$this->resetModified();
 
 			$this->setNew(false);
@@ -597,7 +634,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				$this->ensureConsistency();
 			}
 
-			return $startcol + 12; // 12 = JQStoreManagedJobPeer::NUM_HYDRATE_COLUMNS.
+			return $startcol + 13; // 13 = JQStoreManagedJobPeer::NUM_HYDRATE_COLUMNS.
 
 		} catch (Exception $e) {
 			throw new PropelException("Error populating JQStoreManagedJob object", $e);
@@ -839,6 +876,9 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		if ($this->isColumnModified(JQStoreManagedJobPeer::MAX_ATTEMPTS)) {
 			$modifiedColumns[':p' . $index++]  = 'MAX_ATTEMPTS';
 		}
+		if ($this->isColumnModified(JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS)) {
+			$modifiedColumns[':p' . $index++]  = 'MAX_RUNTIME_SECONDS';
+		}
 		if ($this->isColumnModified(JQStoreManagedJobPeer::PRIORITY)) {
 			$modifiedColumns[':p' . $index++]  = 'PRIORITY';
 		}
@@ -885,6 +925,9 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 						break;
 					case 'MAX_ATTEMPTS':
 						$stmt->bindValue($identifier, $this->max_attempts, PDO::PARAM_INT);
+						break;
+					case 'MAX_RUNTIME_SECONDS':
+						$stmt->bindValue($identifier, $this->max_runtime_seconds, PDO::PARAM_INT);
 						break;
 					case 'PRIORITY':
 						$stmt->bindValue($identifier, $this->priority, PDO::PARAM_INT);
@@ -1046,15 +1089,18 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				return $this->getMaxAttempts();
 				break;
 			case 8:
-				return $this->getPriority();
+				return $this->getMaxRuntimeSeconds();
 				break;
 			case 9:
-				return $this->getQueueName();
+				return $this->getPriority();
 				break;
 			case 10:
-				return $this->getStartDts();
+				return $this->getQueueName();
 				break;
 			case 11:
+				return $this->getStartDts();
+				break;
+			case 12:
 				return $this->getStatus();
 				break;
 			default:
@@ -1093,10 +1139,11 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 			$keys[5] => $this->getJob(),
 			$keys[6] => $this->getJobId(),
 			$keys[7] => $this->getMaxAttempts(),
-			$keys[8] => $this->getPriority(),
-			$keys[9] => $this->getQueueName(),
-			$keys[10] => $this->getStartDts(),
-			$keys[11] => $this->getStatus(),
+			$keys[8] => $this->getMaxRuntimeSeconds(),
+			$keys[9] => $this->getPriority(),
+			$keys[10] => $this->getQueueName(),
+			$keys[11] => $this->getStartDts(),
+			$keys[12] => $this->getStatus(),
 		);
 		return $result;
 	}
@@ -1153,15 +1200,18 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 				$this->setMaxAttempts($value);
 				break;
 			case 8:
-				$this->setPriority($value);
+				$this->setMaxRuntimeSeconds($value);
 				break;
 			case 9:
-				$this->setQueueName($value);
+				$this->setPriority($value);
 				break;
 			case 10:
-				$this->setStartDts($value);
+				$this->setQueueName($value);
 				break;
 			case 11:
+				$this->setStartDts($value);
+				break;
+			case 12:
 				$this->setStatus($value);
 				break;
 		} // switch()
@@ -1196,10 +1246,11 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		if (array_key_exists($keys[5], $arr)) $this->setJob($arr[$keys[5]]);
 		if (array_key_exists($keys[6], $arr)) $this->setJobId($arr[$keys[6]]);
 		if (array_key_exists($keys[7], $arr)) $this->setMaxAttempts($arr[$keys[7]]);
-		if (array_key_exists($keys[8], $arr)) $this->setPriority($arr[$keys[8]]);
-		if (array_key_exists($keys[9], $arr)) $this->setQueueName($arr[$keys[9]]);
-		if (array_key_exists($keys[10], $arr)) $this->setStartDts($arr[$keys[10]]);
-		if (array_key_exists($keys[11], $arr)) $this->setStatus($arr[$keys[11]]);
+		if (array_key_exists($keys[8], $arr)) $this->setMaxRuntimeSeconds($arr[$keys[8]]);
+		if (array_key_exists($keys[9], $arr)) $this->setPriority($arr[$keys[9]]);
+		if (array_key_exists($keys[10], $arr)) $this->setQueueName($arr[$keys[10]]);
+		if (array_key_exists($keys[11], $arr)) $this->setStartDts($arr[$keys[11]]);
+		if (array_key_exists($keys[12], $arr)) $this->setStatus($arr[$keys[12]]);
 	}
 
 	/**
@@ -1219,6 +1270,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		if ($this->isColumnModified(JQStoreManagedJobPeer::JOB)) $criteria->add(JQStoreManagedJobPeer::JOB, $this->job);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::JOB_ID)) $criteria->add(JQStoreManagedJobPeer::JOB_ID, $this->job_id);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::MAX_ATTEMPTS)) $criteria->add(JQStoreManagedJobPeer::MAX_ATTEMPTS, $this->max_attempts);
+		if ($this->isColumnModified(JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS)) $criteria->add(JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS, $this->max_runtime_seconds);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::PRIORITY)) $criteria->add(JQStoreManagedJobPeer::PRIORITY, $this->priority);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::QUEUE_NAME)) $criteria->add(JQStoreManagedJobPeer::QUEUE_NAME, $this->queue_name);
 		if ($this->isColumnModified(JQStoreManagedJobPeer::START_DTS)) $criteria->add(JQStoreManagedJobPeer::START_DTS, $this->start_dts);
@@ -1292,6 +1344,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		$copyObj->setErrorMessage($this->getErrorMessage());
 		$copyObj->setJob($this->getJob());
 		$copyObj->setMaxAttempts($this->getMaxAttempts());
+		$copyObj->setMaxRuntimeSeconds($this->getMaxRuntimeSeconds());
 		$copyObj->setPriority($this->getPriority());
 		$copyObj->setQueueName($this->getQueueName());
 		$copyObj->setStartDts($this->getStartDts());
@@ -1353,6 +1406,7 @@ abstract class BaseJQStoreManagedJob extends BaseObject  implements Persistent
 		$this->job = null;
 		$this->job_id = null;
 		$this->max_attempts = null;
+		$this->max_runtime_seconds = null;
 		$this->priority = null;
 		$this->queue_name = null;
 		$this->start_dts = null;

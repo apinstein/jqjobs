@@ -7,6 +7,26 @@ require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQJobsTest extends PHPUnit_Framework_TestCase
 {
+    /**
+     * Utility function to help bootstrap states for testing.
+     */
+    public static function moveJobToStatus($mJob, $targetStatus)
+    {
+        // map on how to bootstrap a job to the "FROM" state
+        $pathForSetup = array(
+            JQManagedJob::STATUS_UNQUEUED       => array(),
+            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
+            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
+            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
+            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
+            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
+        );
+
+        foreach ($pathForSetup[$targetStatus] as $s) {
+            $mJob->setStatus($s);
+        }
+    }
+
     private function setup10SampleJobs($q, $queueName = 'test')
     {
         // Add jobs
@@ -281,26 +301,13 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
      */
     function testStateTransitions($from, $to, $expectedOk)
     {
-        // map on how to bootstrap a job to the "FROM" state
-        $pathForSetup = array(
-            JQManagedJob::STATUS_UNQUEUED       => array(),
-            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
-            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
-            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
-            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
-            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
-        );
-
         // create a queuestore
         $q = new JQStore_Array();
 
         // set up initial condiitions
         $mJob = new JQManagedJob($q);
-        foreach ($pathForSetup[$from] as $s) {
-            $mJob->setStatus($s);
-        }
+        JQJobsTest::moveJobToStatus($mJob, $from);
         $this->assertEquals($from, $mJob->getStatus());
-        // initial cond OK
 
         $transition = "[" . ($expectedOk ? 'OK' : 'NO') . "] {$from} => {$to}";
         if ($expectedOk)
@@ -354,5 +361,11 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
             }
         }
         return $testCases;
+    }
+
+    function testDefaultMaxRuntimeSecondsIsNull()
+    {
+        $mJob = new JQManagedJob($q, array('maxRuntimeSeconds' => $maxRuntimeSeconds));
+        $this->assertNull($mJob->getMaxRuntimeSeconds());
     }
 }

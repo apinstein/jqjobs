@@ -35,16 +35,17 @@ class JQStore_Propel implements JQStore
         $this->autoscaler = NULL;
 
         $this->options = array_merge(array(
-                                            'nextAlwaysWaitsForLock'    => true,
-                                            'tableName'                 => 'JQStoreManagedJob',
-                                            'jobIdColName'              => 'JOB_ID',
-                                            'jobCoalesceIdColName'      => 'COALESCE_ID',
-                                            'jobQueueNameColName'       => 'QUEUE_NAME',
-                                            'jobStatusColName'          => 'STATUS',
-                                            'jobPriorityColName'        => 'PRIORITY',
-                                            'jobStartDtsColName'        => 'START_DTS',
-                                            'jobEndDtsColName'          => 'END_DTS',
-                                            'toArrayOptions'            => array('dtsFormat' => 'r'),
+                                            'nextAlwaysWaitsForLock'        => true,
+                                            'tableName'                     => 'JQStoreManagedJob',
+                                            'jobIdColName'                  => 'JOB_ID',
+                                            'jobCoalesceIdColName'          => 'COALESCE_ID',
+                                            'jobQueueNameColName'           => 'QUEUE_NAME',
+                                            'jobStatusColName'              => 'STATUS',
+                                            'jobPriorityColName'            => 'PRIORITY',
+                                            'jobStartDtsColName'            => 'START_DTS',
+                                            'jobEndDtsColName'              => 'END_DTS',
+                                            'jobMaxRuntimeSecondsColName'   => 'MAX_RUNTIME_SECONDS',
+                                            'toArrayOptions'                => array('dtsFormat' => 'r'),
                                           ),
                                      $options
                                     );
@@ -111,6 +112,24 @@ class JQStore_Propel implements JQStore
         return $mJob;
     }
     
+    function detectHungJobs()
+    {
+        // optimized query to select only possibly hung jobs...
+        $c = new Criteria;
+        $c->add($this->options['jobStatusColName'], JQManagedJob::STATUS_RUNNING);
+        $c->add($this->options['jobMaxRuntimeSecondsColName'], NULL, Criteria::ISNOTNULL);
+        $c->add($this->options['jobMaxRuntimeSecondsColName'], "{$this->options['jobStartDtsColName']} + ({$this->options['jobMaxRuntimeSecondsColName']}||' seconds')::interval < now()", Criteria::CUSTOM);
+        $possiblyHungJobs = call_user_func(array("{$this->propelClassName}Peer", 'doSelect'), $c, $this->con);
+        foreach ($possiblyHungJobs as $possiblyHungJob) {
+            $mJob = $this->getWithMutex($possiblyHungJob->getJobId());
+            if ($mJob->isPastMaxRuntimeSeconds())   // verify with the JQJobs calc
+            {
+                $mJob->retry(true);
+            }
+            $this->clearMutex($mJob->getJobId());
+        }
+    }
+
     public function existsJobForCoalesceId($coalesceId)
     {
         if ($coalesceId === NULL)

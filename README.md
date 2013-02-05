@@ -22,16 +22,20 @@ Features
 * Optional jitter for high-concurrency situations
 * Robust signal handling, including graceful shutdown on SIGTERM
 * Robust autoscaler with Heroku driver.
+* Hung jobs detection (will be re-queued).
 
 Roadmap
 * Queue admin tool (cli & gui)
 
-The job system has only a few parts:
+The job system has only a few core parts:
 
 * JQJob is an interface for a class that does actual work.
 * JQManagedJob is a wrapper for JQJob's which contains metadata used to manage the job (status, priority, etc).
 * JQStore is where JQManagedJob's are persisted. The application queues jobs in a JQStore for later processing.
 * JQWorker runs jobs from the queue. It is typically run in a background process.
+
+Additional Utilities:
+* JQAutoscaler is a utility that can manage auto-scaling your worker pool.
 * JQDelayedJob is a utility class for registering a function or job to be run after the script exits.
 
 The JQStore manages the queue and persistence of the JQManagedJob's.
@@ -78,6 +82,8 @@ The minimal amount of work needed to use a JQJobs is 1) create at least one job;
                               // the declare(ticks=1) must be in global scope.
     $w = new JQWorker($q);
     $w->start();
+
+5) If you want hung jobs detection and you aren't using JQAutoscaler, you will need to schedule a task to run JQStore::detectHungJobs().
 
 =======================
 

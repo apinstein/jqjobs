@@ -71,6 +71,11 @@ final class JQManagedJob implements JQJob
      * @var string coalesceId Duplicate jobs in the same queueName with the same coalesceId are not allowed. enqueue() will succeed, but will return the existing job.
      */
     protected $coalesceId;
+    /**
+     * @var int maxRuntimeSeconds The maximum number of seconds before a STATUS_RUNNING job is considered "HUNG" and is eligible for a mulligan retry.
+     *                            This feature essentially auto-detects aborted states (due to workers that didn't clean up properly) and allows retry.
+     */
+    protected $maxRuntimeSeconds;
 
     /**
      * @var boolean An internal lock to prevent a job from being run multiple times. Probably overkill?
@@ -92,6 +97,7 @@ final class JQManagedJob implements JQJob
      *              maxAttempts:    int             - maximum number of attempts allowed for this job, default 1
      *              queueName:      string          - the queueName to associate this job with
      *       deleteOnComplete:      boolean         - delete the job when done? default false
+     *      maxRuntimeSeconds:      int             - seconds that the job is allowed to be in STATUS_RUNNING before it's determined to be aborted. default null (no auto-cleanup)
      */
     public function __construct($jqStore, $options = array())
     {
@@ -101,6 +107,7 @@ final class JQManagedJob implements JQJob
         $this->priority = 0;
         $this->maxAttempts = 1;
         $this->attemptNumber = 0;
+        $this->maxRuntimeSeconds = NULL;
 
         if (isset($options['startDts']))
         {
@@ -122,6 +129,10 @@ final class JQManagedJob implements JQJob
         {
             $this->deleteOnComplete = $options['deleteOnComplete'];
         }
+        if (isset($options['maxRuntimeSeconds']))
+        {
+            $this->maxRuntimeSeconds = $options['maxRuntimeSeconds'];
+        }
     }
 
     public function persistableFields()
@@ -138,7 +149,8 @@ final class JQManagedJob implements JQJob
             'maxAttempts',
             'attemptNumber',
             'priority',
-            'errorMessage'
+            'errorMessage',
+            'maxRuntimeSeconds'
         );
     }
 
@@ -308,6 +320,22 @@ final class JQManagedJob implements JQJob
         return $this->endDts;
     }
 
+    public function getMaxRuntimeSeconds()
+    {
+        return $this->maxRuntimeSeconds;
+    }
+
+    public function isPastMaxRuntimeSeconds()
+    {
+        if ($this->getStatus() !== JQManagedJob::STATUS_RUNNING) return false;
+        if ($this->maxRuntimeSeconds === NULL) return false;
+
+        $startDtsEpoch = $this->getStartDts()->format('U');
+        $expirationDtsEpoch = $startDtsEpoch + $this->maxRuntimeSeconds;
+        $now = time();
+        return $now > $expirationDtsEpoch;
+    }
+
     /**
      * Mark the job as started.
      *
@@ -316,9 +344,13 @@ final class JQManagedJob implements JQJob
      *
      * This function tells the JQStore to save the JQManagedJob.
      */
-    public function markJobStarted()
+    public function markJobStarted(DateTime $asOf = NULL)
     {
-        $this->startDts = new DateTime();
+        if ($asOf === NULL)
+        {
+            $asOf = new DateTime();
+        }
+        $this->startDts = $asOf;
         $this->endDts = NULL;
         $this->setStatus(JQManagedJob::STATUS_RUNNING);
         $this->errorMessage = NULL;

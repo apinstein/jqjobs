@@ -33,6 +33,16 @@ class JQStore_Array implements JQStore
         return $mJob;
     }
 
+    function detectHungJobs()
+    {
+        foreach ($this->queue as $mJob) {
+            if ($mJob->isPastMaxRuntimeSeconds())
+            {
+                $mJob->retry(true);
+            }
+        }
+    }
+
     public function existsJobForCoalesceId($coalesceId)
     {
         if ($coalesceId === NULL)

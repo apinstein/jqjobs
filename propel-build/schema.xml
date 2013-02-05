@@ -10,6 +10,7 @@
     <column name="job" phpName="Job" type="LONGVARCHAR" required="false"/>
     <column name="job_id" phpName="JobId" type="INTEGER" primaryKey="true" autoIncrement="true" required="true"/>
     <column name="max_attempts" phpName="MaxAttempts" type="INTEGER" required="false"/>
+    <column name="max_runtime_seconds" phpName="MaxRuntimeSeconds" type="INTEGER" required="false"/>
     <column name="priority" phpName="Priority" type="INTEGER" required="false"/>
     <column name="queue_name" phpName="QueueName" type="LONGVARCHAR" required="false"/>
     <column name="start_dts" phpName="StartDts" type="TIMESTAMP" required="false"/>

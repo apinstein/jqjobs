@@ -25,9 +25,15 @@ class JQAutoscaler
     // @todo should this be moved to per-queue? probably yes
     protected $scaleDownMinJump = 20;
 
+    protected $lastDetectHungJobsAt;
+    protected $detectHungJobsInterval;
+
     public function __construct($jqStore, $scalable, $config)
     {
         $this->jqStore = $jqStore;
+        $this->lastDetectHungJobsAt = time();
+        $this->detectHungJobsInterval = 10;
+
         // @todo config.maxConcurrency should be in the JQScalable interface, too
         $this->config = $config;
         $this->scalable = $scalable;
@@ -127,6 +133,16 @@ class JQAutoscaler
         $this->scalingHistory[$queueName]['lastScaleDelta'] = $to - $from;
     }
 
+    protected function detectHungJobs()
+    {
+        if (time() - $this->lastDetectHungJobsAt <= $this->detectHungJobsInterval) return;
+
+        print "JQAutoscaler::detectHungJobs() running...";
+        $this->jqStore->detectHungJobs();
+        $this->lastDetectHungJobsAt = time();
+        print " done!\n";
+    }
+
     public function run()
     {
         while (true) {
@@ -160,7 +176,10 @@ class JQAutoscaler
                 $this->scalable->setCurrentWorkersForQueue(0, JQScalable::WORKER_AUTOSCALER);
                 break;
             }
-            sleep(1);
+
+            $this->detectHungJobs();
+
+            JQWorker::sleep(1);
         }
         print "Autoscaler exiting.\n";
     }
