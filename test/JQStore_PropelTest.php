@@ -1,13 +1,9 @@
 <?php
 
-/**
- * Right now this test is coupled to TourBuzz to get access to an actual JQStore_Propel. Need to figure out a way to factor this out later.
- * Maybe by including the propel JQStore_Propel classes in the JQJobs?
- */
-
 require_once dirname(__FILE__) . '/TestCommon.php';
+require_once dirname(__FILE__) . '/JQStore_AllTest.php';
 
-class JQJobsPropelTest extends PHPUnit_Framework_TestCase
+class JQStore_PropelTest extends JQStore_AllTest
 {
     function setup()
     {
@@ -18,7 +14,7 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
         }
         $this->con->beginTransaction();
         $this->con->query("truncate jqstore_managed_job");
-        $this->q = new JQStore_Propel('JQStoreManagedJob', $this->con);
+        $this->jqStore = new JQStore_Propel('JQStoreManagedJob', $this->con);
     }
 
     function tearDown()
@@ -31,7 +27,7 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
      */
     function testJQJobs()
     {
-        $q = $this->q;
+        $q = $this->jqStore;
         $this->assertEquals(0, $q->count('test'));
 
         // Add jobs
@@ -55,7 +51,7 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
     {
         $jobIdsByIndex = array();
         foreach (range(1,10) as $i) {
-            $job = $this->q->enqueue(new QuietSimpleJob($i), array('queueName' => $queueName));
+            $job = $this->jqStore->enqueue(new QuietSimpleJob($i), array('queueName' => $queueName));
             $jobIdsByIndex[] = $job->getJobId();
         }
         return $jobIdsByIndex;
@@ -65,35 +61,18 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
     {
         $jobIdsByIndex = $this->setup10SampleJobs();
         $jobId = current($jobIdsByIndex);
-        $j = $this->q->getWithMutex($jobId);
+        $j = $this->jqStore->getWithMutex($jobId);
         $this->setExpectedException('JQStore_JobIsLockedException');
-        $this->q->getWithMutex($jobId);
+        $this->jqStore->getWithMutex($jobId);
     }
 
     function testGetJobWithMutexThenClearThenLock()
     {
         $jobIdsByIndex = $this->setup10SampleJobs();
         $jobId = current($jobIdsByIndex);
-        $this->q->getWithMutex($jobId);
-        $this->q->clearMutex($jobId);
-        $this->q->getWithMutex($jobId);
-    }
-
-    /**
-     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
-     */
-    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
-    {
-        $q = $this->q;
-
-        $coalesceId = 1234;
-
-        $firstJobEnqueued = $q->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
-        $this->assertEquals(1, $q->count('test'));
-
-        $secondJobEnqueued = $q->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
-        $this->assertEquals(1, $q->count('test'));
-        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
+        $this->jqStore->getWithMutex($jobId);
+        $this->jqStore->clearMutex($jobId);
+        $this->jqStore->getWithMutex($jobId);
     }
 
     function testJobsAreRetrieveableByCoalesceId()
@@ -102,15 +81,15 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
         $coalesceId  = 'foo';
         $insertedJob = new SampleCoalescingJob($coalesceId);
         $options     = array('queueName' => 'test');
-        $this->q->enqueue($insertedJob, $options);
+        $this->jqStore->enqueue($insertedJob, $options);
 
         // Make sure we have a job enqueued
         // Helpful for debugging...
-        $this->assertEquals(1, $this->q->count('test'));
+        $this->assertEquals(1, $this->jqStore->count('test'));
         $this->assertEquals($coalesceId, $insertedJob->coalesceId());
 
         // Make sure the job exists for the coalesceId
-        $retrievedJob = $this->q->getByCoalesceId($coalesceId)->getJob();
+        $retrievedJob = $this->jqStore->getByCoalesceId($coalesceId)->getJob();
         $this->assertEquals($insertedJob, $retrievedJob);
     }
 
@@ -120,14 +99,14 @@ class JQJobsPropelTest extends PHPUnit_Framework_TestCase
     function testJqJobsCatchesUnserializeExceptions()
     {
         // create a queuestore
-        $job = $this->q->enqueue(new SampleExceptionalUnserializerJob(), array('queueName' => 'test'));
+        $job = $this->jqStore->enqueue(new SampleExceptionalUnserializerJob(), array('queueName' => 'test'));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($this->q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($this->jqStore, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
         $w->start();
 
         // have to re-fetch job since db state changed...
-        $job = $this->q->get($job->getJobId());
+        $job = $this->jqStore->get($job->getJobId());
 
         // we only get here if the worker cleanly exited.
         $this->assertEquals(JQManagedJob::STATUS_FAILED, $job->getStatus());

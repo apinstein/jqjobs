@@ -50,12 +50,18 @@ class QuietSimpleJob implements JQJob
     function coalesceId() { return NULL; }
 }
 
+class SampleJobCounter
+{
+    private static $counter = 0;
+    public static function reset() { self::$counter = 0; }
+    public static function count() { return self::$counter; }
+    public static function increment() { self::$counter++; }
+}
 class SampleJob implements JQJob
 {
-    function __construct($info) { $this->info = $info; }
     function run(JQManagedJob $mJob) // no-op
     {
-        $this->info->counter++;
+        SampleJobCounter::increment();
         return JQManagedJob::STATUS_COMPLETED;
     }
     function coalesceId() { return NULL; }

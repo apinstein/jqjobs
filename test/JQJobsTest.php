@@ -1,38 +1,12 @@
 <?php
 
+// @todo factor out tests which exist in both JQStore_Array_Test and JQStore_Propel_Test into JQStore_All_Test
+// @todo factor out tests specific to JQStore_Array into JQStore_Array_Test
+
 require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQJobsTest extends PHPUnit_Framework_TestCase
 {
-    public $counter = 0;
-
-    /**
-     * @testdox Test Basic JQJobs Processing
-     */
-    function testJQJobs()
-    {
-        // create a queuestore
-        $q = new JQStore_Array();
-
-        $this->assertEquals(0, $q->count('test'));
-
-        // Add jobs
-        foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
-        }
-
-        $this->assertEquals(10, $q->count());
-        $this->assertEquals(10, $q->count('test'));
-        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
-
-        // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
-        $w->start();
-
-        $this->assertEquals(10, $this->counter);
-        $this->assertEquals(0, $q->count('test'));
-    }
-
     private function setup10SampleJobs($q, $queueName = 'test')
     {
         // Add jobs
@@ -175,25 +149,27 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(10, $q->count('test'));
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
 
+        SampleJobCounter::reset();
+
         // Start a worker to run 1 job
         $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 1, 'exitIfNoJobs' => true, 'silent' => true));
         $w->start();
 
-        $this->assertEquals(1, $this->counter);
+        $this->assertEquals(1, SampleJobCounter::count());
         $this->assertEquals(9, $q->count('test'));
 
         // Start a worker to run 2 jobs
         $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 2, 'exitIfNoJobs' => true, 'silent' => true));
         $w->start();
 
-        $this->assertEquals(3, $this->counter);
+        $this->assertEquals(3, SampleJobCounter::count());
         $this->assertEquals(7, $q->count('test'));
 
         // Start a worker to run remaining
         $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => NULL, 'exitIfNoJobs' => true, 'silent' => true));
         $w->start();
 
-        $this->assertEquals(10, $this->counter);
+        $this->assertEquals(10, SampleJobCounter::count());
         $this->assertEquals(0, $q->count('test'));
     }
 
@@ -235,22 +211,6 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q->enqueue(new SampleJob($this, 1), array('queueName' => 'test'));
 
         $this->assertEquals(1, $q->count('test'));
-    }
-    /**
-     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
-     */
-    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
-    {
-        $q = new JQStore_Array();
-
-        $coalesceId = 1234;
-
-        $firstJobEnqueued = $q->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
-        $this->assertEquals(1, $q->count('test'));
-
-        $secondJobEnqueued = $q->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
-        $this->assertEquals(1, $q->count('test'));
-        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
     }
 
     function testJobsAreRetrieveableByCoalesceId()
