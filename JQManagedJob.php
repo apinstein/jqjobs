@@ -651,6 +651,9 @@ class ErrorManager
     {
         if (!self::$shutdownErrorDetectorEnabled) return;
 
+        // give ourselves a little more memory so we can process the exception in the case of an OOM
+        ini_set('memory_limit', memory_get_usage() + 25000000 /* 25MB */);
+
         // check for error
         $lastError = self::error_get_last_ToErrorException();
         if ($lastError)
