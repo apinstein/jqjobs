@@ -58,6 +58,7 @@ require_once dirname(__FILE__) . '/JQJob.php';
 require_once dirname(__FILE__) . '/JQManagedJob.php';
 
 require_once dirname(__FILE__) . '/JQStore.php';
+require_once dirname(__FILE__) . '/JQStore/Autoscalable.php';
 require_once dirname(__FILE__) . '/JQStore/Array.php';
 require_once dirname(__FILE__) . '/JQStore/Propel.php';
 

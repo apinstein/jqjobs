@@ -6,9 +6,10 @@
  *
  * The propel class should have all fields coded in JQManagedJob::persistableFields().
  *
- * This queue is suitable for moderate workloads (dozens of jobs per second) and supports concurrent access from multiple workers.
+ * This queue is suitable for moderate to heavy workloads (dozens to hundreds of jobs per second) and supports concurrent access from multiple workers.
+ * This queue supports JQAutoscaler.
  */
-class JQStore_Propel implements JQStore
+class JQStore_Propel implements JQStore, JQStore_Autoscalable
 {
     protected $con;
     protected $propelClassName;
@@ -56,14 +57,15 @@ class JQStore_Propel implements JQStore
         }
     }
 
-    /**
-     * Enable an autoscaler.
-     *
-     * @param object JQAutoscaler
-     */
     public function setAutoscaler(JQAutoscaler $as)
     {
         $this->autoscaler = $as;
+    }
+
+    public function runAutoscaler()
+    {
+        if (!$this->autoscaler) throw new Exception("No autoscaler configured.");
+        $this->autoscaler->run();
     }
 
     public function enqueue(JQJob $job, $options = array())
