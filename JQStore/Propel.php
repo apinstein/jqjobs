@@ -55,6 +55,9 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         foreach (array('jobIdColName', 'jobQueueNameColName', 'jobStatusColName', 'jobPriorityColName', 'jobStartDtsColName', 'jobEndDtsColName') as $colName) {
             $this->options[$colName] = eval("return {$this->propelClassName}Peer::{$this->options[$colName]};");
         }
+
+        // bad things happen without this!
+        Propel::disableInstancePooling();
     }
 
     public function setAutoscaler(JQAutoscaler $as)
@@ -337,7 +340,6 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
             throw new Exception("abort() called while transaction in progress, shouldn't happen anymore.");
             $this->con->rollback();
         }
-        call_user_func(array("{$this->propelClassName}Peer", 'clearInstancePool'));
     }
 
     /**
