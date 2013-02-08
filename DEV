@@ -35,6 +35,9 @@ cd test/concurrency-test-script && sh concurrency-test.sh
 # you will need to manually run the tests in test/shutdown-error-tests to make sure they behave as indicated
 cd test/shutdown-error-tests
 for i in *.php; do php $i; done
+# you will need to manually run the tests in test/signals to make sure they behave as indicated
+cd test/signals
+./run-test.sh
 
 # tags
 ctags -f tags -R --extra=+f *php lib

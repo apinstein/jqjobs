@@ -9,5 +9,5 @@ declare(ticks = 1);
 $q = new JQStore_Array();
 $q->enqueue(new SleepJob);
 $q->enqueue(new SleepJob);
-$w = new JQWorker($q, array('verbose' => true, 'exitIfNoJobs' => true));
+$w = new JQWorker($q, array('verbose' => true, 'exitIfNoJobs' => true, 'enableJitter' => false));
 $w->start();
