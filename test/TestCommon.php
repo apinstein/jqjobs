@@ -97,6 +97,28 @@ class SampleFailJob implements JQJob
     function description() { return "Sample FAIL job"; }
 }
 
+class SampleLoggingJob implements JQJob
+{
+    function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
+    function cleanup() { }
+    function coalesceId() { return NULL; }
+    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message)
+    {
+        print "Status change: {$oldStatus} => {$mJob->getStatus()}\n";
+    }
+    function description() { return "Sample callback job"; }
+}
+
+class SampleCallbackJob implements JQJob
+{
+    function __construct($callback) { $this->callback = $callback; }
+    function run(JQManagedJob $mJob) { return call_user_func($this->callback); }
+    function cleanup() { }
+    function coalesceId() { return NULL; }
+    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
+    function description() { return "Sample callback job"; }
+}
+
 class SampleAsyncJob implements JQJob
 {
     function __construct($info) { $this->info = $info; }

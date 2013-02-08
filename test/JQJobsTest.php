@@ -1,7 +1,8 @@
 <?php
 
-// @todo factor out tests which exist in both JQStore_Array_Test and JQStore_Propel_Test into JQStore_All_Test
-// @todo factor out tests specific to JQStore_Array into JQStore_Array_Test
+// @todo factor out tests which exist in both JQStore_ArrayTest and JQStore_PropelTest into JQStore_AllTest
+// @todo factor out tests specific to JQStore_Array into JQStore_ArrayTest
+// @todo factor out tests in here that are really JQStore_* tests int JQStore_AllTest -- this file should probably be JQManagedJob
 
 require_once dirname(__FILE__) . '/TestCommon.php';
 
@@ -368,4 +369,41 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $mJob = new JQManagedJob($q, array('maxRuntimeSeconds' => $maxRuntimeSeconds));
         $this->assertNull($mJob->getMaxRuntimeSeconds());
     }
+
+    /**
+     * @dataProvider failedJobDetectionDataProvider
+     */
+    function testFailedJobDetection($errorGeneratorF, $exceptionMessageContains)
+    {
+        // setup
+        $q = new JQStore_Array();
+        $mJob = new JQManagedJob($q);
+        $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
+        $mJob->setJob(new SampleCallbackJob($errorGeneratorF));
+        $mJob->markJobStarted();
+
+        // run
+        $err = $mJob->run($mJob);
+        $this->assertEquals($exceptionMessageContains, $err, "JQManagedJob::run() failed to detect {$exceptionMessageContains}");
+    }
+    function failedJobDetectionDataProvider()
+    {
+        // Handles: E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_USER_ERROR | E_RECOVERABLE_ERROR => 4597
+        return array(
+            array(
+                function() {
+                    throw new JobTestException('JobTestException');
+                },
+                'JobTestException'
+            ),
+            array(
+                function() {
+                    trigger_error("E_USER_ERROR", E_USER_ERROR);
+                },
+                'E_USER_ERROR'
+            ),
+        );
+    }
 }
+
+class JobTestException extends Exception {}

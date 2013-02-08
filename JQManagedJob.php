@@ -452,25 +452,10 @@ final class JQManagedJob implements JQJob
         $this->jqStore->delete($this);
     }
 
-    /**
-     * Error handler callback for PHP catchable errors; allows us to gracefully fail jobs that encounter PHP errors (instead of abandoning a job in the running state)
-     * Handles: E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_USER_ERROR | E_RECOVERABLE_ERROR => 4597
-     * It's important to use this set of errors as otherwise you can end up accidentally disabling autoload.
-     */
-    const HANDLED_ERRORS = 4597;
-    function checkShutdownForFatalErrors()
+    function errorHandlerFailJob($errorException)
     {
-        $last_error = error_get_last();
-        if ($last_error['type'] & self::HANDLED_ERRORS)
-        {
-            $this->markJobFailed("{$last_error['type']}: {$last_error['message']}\n\nAt {$last_error['file']}:{$last_error['line']}");
-        }
+        $this->markJobFailed($errorException->getMessage());
     }
-    function phpErrorToException($errno, $errstr, $errfile, $errline)
-    {
-        throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
-    }
-
 
     /**
      * Run the job.
@@ -486,14 +471,10 @@ final class JQManagedJob implements JQJob
         if ($this->isRunningLock) throw new Exception("Local run lock already in use... can't run a job twice.");
         $this->isRunningLock = true;
 
-        // @todo this register_shutdown_function can happen n times, bad
-        register_shutdown_function(array($this, 'checkShutdownForFatalErrors'));
-        set_error_handler(array($this, 'phpErrorToException'), self::HANDLED_ERRORS);
-
         // run the job
         $err = NULL;
         try {
-            $disposition = $this->job->run($this);
+            $disposition = ErrorManager::wrap(array($this->job, 'run'), array($this), array($this, 'errorHandlerFailJob'));
         } catch (JQWorker_SignalException $e) {
             // NOTE: a signal interrupts any line of code; from the try/catch above thru the cleanup code below
             // we throw here so that the same workflow can be used for errors in the try/catch and outsie of it
@@ -503,9 +484,6 @@ final class JQManagedJob implements JQJob
             $err = $e->getMessage();
             $disposition = self::STATUS_FAILED;
         }
-
-        // error-checking cleanup
-        restore_error_handler();
 
         switch ($disposition) {
             case self::STATUS_COMPLETED:
@@ -564,3 +542,121 @@ final class JQManagedJob implements JQJob
     }
 }
 
+/**
+ * @todo Factor this out into its own package -- many things could benefit from it.
+ */
+class ErrorManager
+{
+    /**
+     * Error handler callback for PHP catchable errors; allows us to gracefully fail jobs that encounter PHP errors (instead of abandoning a job in the running state)
+     * Handles: E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_USER_ERROR | E_RECOVERABLE_ERROR => 4597
+     * It's important to use this set of errors as otherwise you can end up accidentally disabling autoload.
+     */
+    const HANDLED_ERRORS = 4597;
+    const IGNORED_ERROR  = 'ErrorManager::NO_ERROR_PLACEHOLDER';
+
+    protected static $shutdownErrorDetectorInstalled = false;
+    protected static $shutdownErrorDetectorEnabled   = false;
+    protected static $currentHandlerStack            = array();
+
+    /**
+     * Run some PHP function, making sure that any errors are routed to the error handler.
+     *
+     * This function will convert any trigger_error style errors and throw an ErrorException, and also detect catchable fatal errors
+     * and pass them to the shutdownErrorHandler. Unfortunately shutdown errors cannot be used to throw Exceptions in your call stack.
+     *
+     * @param callable The code you want to run.
+     * @param array An array of arguments you need passed to your function, or NULL if no args.
+     * @param callable The shutdown error handler, default NULL.
+     * @return mixed The return value from your callback function.
+     */
+    public static function wrap($f, $fArgs = NULL, $shutdownErrorHandler = NULL)
+    {
+        if ($fArgs === NULL)
+        {
+            $fArgs = array();
+        }
+        if ($shutdownErrorHandler === NULL)
+        {
+            $shutdownErrorHandler = array('ErrorManager', 'errorHandlerNoop');
+        }
+
+        self::install($shutdownErrorHandler);
+        $ret = call_user_func_array($f, $fArgs ? $fArgs : array());
+        self::remove();
+
+        return $ret;
+    }
+
+    private static function install($errorHandler)
+    {
+        array_push(self::$currentHandlerStack, $errorHandler);
+
+        // Install error handlers
+        set_error_handler(array('ErrorManager', 'errorHandlerRaiseErrorExceptionHandler'), self::HANDLED_ERRORS);
+        if (!self::$shutdownErrorDetectorInstalled) // only do this once every; unfortunately there's no un-install
+        {
+            register_shutdown_function(array('ErrorManager', 'shutdownErrorDetector'));
+            self::$shutdownErrorDetectorInstalled = true;
+        }
+        self::$shutdownErrorDetectorEnabled = true;
+
+        // fire our "ignore" error, make sure it doesn't show
+        // @ supresses OUTPUT but error will still call error handlers and appear in error_get_last
+        @trigger_error(self::IGNORED_ERROR, E_USER_NOTICE);
+    }
+
+    private static function remove()
+    {
+        array_pop(self::$currentHandlerStack);
+
+        // uninstall error handlers
+        restore_error_handler();
+        if (empty(self::$currentHandlerStack))
+        {
+            self::$shutdownErrorDetectorEnabled = false;
+        }
+    }
+
+    /**
+     * A handler for set_error_handler() which raises an ErrorException for "desired" errors.
+     *
+     * NOTE: this function will eat our magic "ignored" error
+     */
+    public static function errorHandlerRaiseErrorExceptionHandler($errno, $errstr, $errfile, $errline)
+    {
+        if ($errstr === self::IGNORED_ERROR) return;
+
+        throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+    }
+
+    public static function errorHandlerNoop($errno, $errstr, $errfile, $errline)
+    {
+    }
+
+    /**
+     * Calls error_get_last() and returns NULL or an object ErrorException
+     * @return object ErrorException ErrorException object, or NULL if there's no current error.
+     */
+    public static function error_get_last_ToErrorException()
+    {
+        $e = error_get_last();
+        if (!$e) return NULL;
+        if ($e['message'] === self::IGNORED_ERROR) return NULL;
+
+        return new ErrorException($e['message'], 0, $e['type'], $e['file'], $e['line']);
+    }
+
+    public static function shutdownErrorDetector()
+    {
+        if (!self::$shutdownErrorDetectorEnabled) return;
+
+        // check for error
+        $lastError = self::error_get_last_ToErrorException();
+        if ($lastError)
+        {
+            $handler = array_pop(self::$currentHandlerStack);
+            call_user_func($handler, $lastError);
+        }
+    }
+}
