@@ -20,6 +20,37 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
     }
 
+    function testCountJobs()
+    {
+        $q = $this->jqStore;
+        $this->assertEquals(0, $q->count('test'));
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+        }
+        $this->assertEquals(10, $q->count('test'));
+        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
+        $this->assertEquals(0, $q->count('test', JQManagedJob::STATUS_RUNNING));
+    }
+
+    function testEnumerateJobs()
+    {
+        $q = $this->jqStore;
+        $found = array();
+        foreach (range(1,10) as $i) {
+            $enqueuedJob = $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+            $found[$enqueuedJob->getJobId()] = false;
+        }
+        $foundCount = 0;
+        foreach ($q->jobs() as $j) {
+            // make sure id is found exactly once
+            $this->assertArrayHasKey($j->getJobId(), $found, "Enumerated job shouldn't exist.");
+            $this->assertFalse($found[$j->getJobId()]);
+            $found[$j->getJobId()] = true;
+            $foundCount++;
+        }
+        $this->assertEquals(10, $foundCount);
+    }
+
     /**
      * @testdox Test Basic JQJobs Processing
      */

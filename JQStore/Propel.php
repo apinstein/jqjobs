@@ -205,6 +205,20 @@ class JQStore_Propel implements JQStore
         return call_user_func(array("{$this->propelClassName}Peer", 'doCount'), $c, false, $this->con);
     }
 
+    public function jobs($queueName = NULL, $status = NULL)
+    {
+        $c = new Criteria;
+        if ($queueName)
+        {
+            $c->add($this->options['jobQueueNameColName'], $queueName);
+        }
+        if ($status)
+        {
+            $c->add($this->options['jobStatusColName'], $status);
+        }
+        return call_user_func(array("{$this->propelClassName}Peer", 'doSelect'), $c, $this->con);
+    }
+
     private function getDbJob($jobId)
     {
         $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'retrieveByPK'), $jobId, $this->con);

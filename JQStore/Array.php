@@ -72,13 +72,18 @@ class JQStore_Array implements JQStore
     }
     public function count($queueName = NULL, $status = NULL)
     {
-        $count = 0;
+        $jobs = $this->jobs($queueName, $status);
+        return count($jobs);
+    }
+    public function jobs($queueName = NULL, $status = NULL)
+    {
+        $jobs = array();
         foreach ($this->queue as $dbJob) {
             if ($queueName && $dbJob->getQueueName() !== $queueName) continue;
             if ($status && $dbJob->getStatus() !== $status) continue;
-            $count++;
+            $jobs[] = $dbJob;
         }
-        return $count;
+        return $jobs;
     }
     public function get($jobId)
     {

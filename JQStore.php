@@ -54,8 +54,18 @@ interface JQStore
      *
      * @param string Queue name (NULL = default queue)
      * @param string Status (NULL = any status)
+     * @return int
      */
     function count($queueName = null, $status = NULL);
+
+    /**
+     * Get all jobs in the JQStore matching the given queue/status.
+     *
+     * @param string Queue name (NULL = default queue)
+     * @param string Status (NULL = any status)
+     * @return array An array of JQJobs.
+     */
+    function jobs($queueName = NULL, $status = NULL);
 
     /**
      * Get a JQManagedJob from the JQStore by ID.
