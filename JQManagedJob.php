@@ -203,6 +203,8 @@ final class JQManagedJob implements JQJob
     public function fromArray($data)
     {
         foreach ($this->persistableFields() as $k) {
+            if (!isset($data[$k])) continue;
+
             switch ($k) {
                 case 'job':
                     $ser = base64_decode($data[$k]);
