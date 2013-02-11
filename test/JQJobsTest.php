@@ -267,6 +267,42 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @dataProvider retryDataProvider
+     */
+    function testRetry($previousAttempts, $maxAttempts, $mulligan, $expectedStatus, $expectedMaxAttempts, $description)
+    {
+        if ($expectedMaxAttempts === NULL) $expectedMaxAttempts = $maxAttempts;
+
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        // set up initial condiitions
+        $mJob = new JQManagedJob($q, array('maxAttempts' => $maxAttempts));
+        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
+        $mJob->setAttemptNumber($previousAttempts);
+        $mJob->markJobStarted();
+        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_RUNNING);
+
+        // fail job
+        $mJob->markJobFailed('retry', $mulligan);
+
+        $this->assertEquals($expectedStatus, $mJob->getStatus(), "Unexpected status");
+        $this->assertEquals($expectedMaxAttempts, $mJob->getMaxAttempts(), "Unexpected maxAttempts");
+    }
+    function retryDataProvider()
+    {
+        $maxMulligans = JQManagedJob::MULLIGAN_MAX_ATTEMPTS;
+        return array(
+            //      previousAttempts    maxAttempts     mulligan        expectedStatus                  expectedMaxAttempts     description
+            array(  0,                  1,              false,          JQManagedJob::STATUS_FAILED,    NULL,                   "normal failure after maxAttempts reached"),
+            array(  0,                  2,              false,          JQManagedJob::STATUS_QUEUED,    NULL,                   "normal retry under maxAttempts tries"),
+            array(  0,                  2,              true,           JQManagedJob::STATUS_QUEUED,    3,                      "normal mulligan retry"),
+            array(  $maxMulligans-2,    $maxMulligans,  true,           JQManagedJob::STATUS_QUEUED,    $maxMulligans,          "last mulligan retry"),
+            array(  $maxMulligans-1,    $maxMulligans,  true,           JQManagedJob::STATUS_FAILED,    $maxMulligans,          "failed -- too many mulligan retries"),
+        );
+    }
+
+    /**
      * @testdox option priority_adjust defaults to NULL and proc_nice will not be called.
      */
     function testAdjustPriorityDefault()
@@ -366,7 +402,8 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     function testDefaultMaxRuntimeSecondsIsNull()
     {
-        $mJob = new JQManagedJob($q, array('maxRuntimeSeconds' => $maxRuntimeSeconds));
+        $q = new JQStore_Array();
+        $mJob = new JQManagedJob($q);
         $this->assertNull($mJob->getMaxRuntimeSeconds());
     }
 

@@ -310,6 +310,11 @@ final class JQManagedJob implements JQJob
         return $this->attemptNumber;
     }
 
+    public function setAttemptNumber($n)
+    {
+        $this->attemptNumber = $n;
+    }
+
     public function getMaxAttempts()
     {
         return $this->maxAttempts;
@@ -409,11 +414,8 @@ final class JQManagedJob implements JQJob
     {
         $this->isRunningLock = false;
 
-        if ($mulligan || $this->getAttemptNumber() < $this->getMaxAttempts()) // retry
-        {
-            $this->retry($mulligan);
-        }
-        else                                                    // fail for good
+        $didQueueForRetry = $this->retry($mulligan);
+        if (!$didQueueForRetry)
         {
             $this->errorMessage = $errorMessage;
             $this->endDts = new DateTime();
@@ -424,17 +426,48 @@ final class JQManagedJob implements JQJob
 
     /**
      * Re-queue the job so that it will be attempted again.
+     *
+     * @param boolean Mulligan mode? If TRUE will bump maxAttempts as well
+     * @return boolean TRUE if the job was able to be queued for retry
      */
     public function retry($mulligan = false)
     {
-        // @todo it's a little lame that this doesn't re-queue at the end of the queue; or maybe jobs should have requeue option; END, after X seconds; right away? longer each time, @ 2x last run time?
-        $this->startDts->modify("+10 seconds");
-        $this->endDts = NULL;
-        $this->setStatus(JQManagedJob::STATUS_QUEUED);
+        // implement mulligan feature
         if ($mulligan && $this->maxAttempts < self::MULLIGAN_MAX_ATTEMPTS)
         {
             $this->maxAttempts++;
         }
+
+        if ($this->attemptNumber >= $this->maxAttempts)
+        {
+            // no retries left
+            return false;
+        }
+        else
+        {
+            // OK to retry
+            // @todo it's a little lame that this doesn't re-queue at the end of the queue; or maybe jobs should have requeue option; END, after X seconds; right away? longer each time, @ 2x last run time?
+            $this->startDts->modify("+10 seconds");
+            $this->endDts = NULL;
+            $this->setStatus(JQManagedJob::STATUS_QUEUED);
+            $this->save();
+            return true;
+        }
+    }
+
+    /**
+     * Restart the current job as if it had never been run before.
+     *
+     * Unlink retry, this *always* works. This is most useful as a manual override to all built-in retry semantics.
+     *
+     * @see retry
+     */
+    public function restart()
+    {
+        $this->attemptNumber = 0;
+        $this->startDts = NULL;
+        $this->endDts = NULL;
+        $this->setStatus(JQManagedJob::STATUS_QUEUED);
         $this->save();
     }
 

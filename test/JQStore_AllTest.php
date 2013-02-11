@@ -85,6 +85,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
      */
     function testJobIsPastMaxRuntimeSeconds($maxRuntimeSeconds, $currentStatus, $startDts, $expectedResult, $description)
     {
+        $q = $this->jqStore;
         $mJob = new JQManagedJob($q);
         $mJob->fromArray(array(
             'status'            => $currentStatus,
