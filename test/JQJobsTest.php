@@ -441,6 +441,32 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
             ),
         );
     }
+
+    /**
+     * @dataProvider autoscalingAlgorithmsDataProvider
+     */
+    function testAutoscalingAlgorithms($algo, $numPending, $maxConcurrency, $expectedValue)
+    {
+        $this->assertEquals($expectedValue, JQAutoscaler::calculateScale($algo, $numPending, $maxConcurrency));
+    }
+    function autoscalingAlgorithmsDataProvider()
+    {
+        return array(
+            //    algorithm         pending     max     expected
+            array('linear',         0,          100,    0),
+            array('linear',         1,          100,    1),
+            array('linear',         50,         100,    50),
+            array('linear',         100,        100,    100),
+            array('linear',         101,        100,    100),
+            array('linear',         500,        100,    100),
+            array('halfLinear',     0,          100,    0),
+            array('halfLinear',     1,          100,    1),
+            array('halfLinear',     2,          100,    1),
+            array('halfLinear',     199,        100,    99),
+            array('halfLinear',     200,        100,    100),
+            array('halfLinear',     201,        100,    100),
+        );
+    }
 }
 
 class JobTestException extends Exception {}

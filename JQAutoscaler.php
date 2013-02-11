@@ -143,6 +143,34 @@ class JQAutoscaler
         print " done!\n";
     }
 
+    public static function calculateScale($scalingAlgorithm, $numPendingJobs, $maxConcurrency)
+    {
+        switch ($scalingAlgorithm) {
+            case 'halfLinear':
+                $numDesiredWorkers = $numPendingJobs / 2;
+                break;
+            case 'linear':
+                $numDesiredWorkers = $numPendingJobs;
+                break;
+            default:
+                throw new Exception("unknown scaling algorithm: {$scalingAlgorithm}");
+        }
+
+        // round down
+        $numDesiredWorkers = (int) $numDesiredWorkers;
+
+        // max concurrency
+        $numDesiredWorkers = min($numDesiredWorkers, $maxConcurrency);
+        
+        // min of 1 if there's 1 job
+        if ($numPendingJobs >= 1)
+        {
+            $numDesiredWorkers = max(1, $numDesiredWorkers);
+        }
+
+        return $numDesiredWorkers;
+    }
+
     public function run()
     {
         while (true) {
@@ -150,16 +178,7 @@ class JQAutoscaler
 
             foreach ($this->config as $queue => $queueConfig) {
                 $numPendingJobs = $this->countPendingJobs($queue);
-
-                switch ($queueConfig['scalingAlgorithm']) {
-                    case 'linear':
-                        $numDesiredWorkers = $numPendingJobs;
-                        break;
-                    default:
-                        throw new Exception("unknown scaling algorithm: {$queueConfig['scalingAlgorithm']}");
-                }
-                $numDesiredWorkers = min($numDesiredWorkers, $queueConfig['maxConcurrency']);
-
+                $numDesiredWorkers = self::calculateScale($queueConfig['scalingAlgorithm'], $numPendingJobs, $queueConfig['maxConcurrency']);
                 $numCurrentWorkers = $this->scalable->countCurrentWorkersForQueue($queue);
                 $this->performAutoscaleChange($queue, $numCurrentWorkers, $numDesiredWorkers);
                 //print "{$queue}: {$numCurrentWorkers} => {$numDesiredWorkers}\n";
