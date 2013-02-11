@@ -16,6 +16,9 @@ final class JQManagedJob implements JQJob
     const STATUS_COMPLETED      = 'completed';
     const STATUS_FAILED         = 'failed';
 
+    // don't bump maxAttempts during mulligans if maxAttempts >= MULLIGAN_MAX_ATTEMPTS
+    const MULLIGAN_MAX_ATTEMPTS = 20;
+
     protected $jobId;
     /**
      * @var object DateTime Creation date of JQManagedJob
@@ -426,7 +429,7 @@ final class JQManagedJob implements JQJob
         $this->startDts->modify("+10 seconds");
         $this->endDts = NULL;
         $this->setStatus(JQManagedJob::STATUS_QUEUED);
-        if ($mulligan)
+        if ($mulligan && $this->maxAttempts < self::MULLIGAN_MAX_ATTEMPTS)
         {
             $this->maxAttempts++;
         }
