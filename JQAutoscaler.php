@@ -64,7 +64,7 @@ class JQAutoscaler
         $f();
         if ($countBefore === 0 || rand(0, 50) == 0)
         {
-            print "Turning on autoscaler worker...\n";
+            #print "Turning on autoscaler worker...\n";
             $this->scalable->setCurrentWorkersForQueue(1, JQScalable::WORKER_AUTOSCALER);
         }
     }
