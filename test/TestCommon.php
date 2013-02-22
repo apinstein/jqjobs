@@ -1,6 +1,6 @@
 <?php
 
-require_once dirname(__FILE__) . '/../JQJobs.php';
+require_once dirname(__FILE__) . '/../src/JQJobs/JQJobs.php';
 
 ini_set('include_path', 
     dirname(__FILE__) . "/../externals/pear/php"
