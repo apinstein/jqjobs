@@ -33,6 +33,7 @@ class JQScalable_Heroku implements JQScalable
             list($type, $num) = explode('.', $psEntry['process']);
             if ($type === $queue) $workerCount++;
         }
+
         return $workerCount;
     }
 
@@ -99,6 +100,45 @@ class HerokuClient
     // Handle errors
     if ($error) throw new Exception("Error running curl: {$error}.");
     if ($httpCode >= 400) throw new Exception("HTTP error: {$httpCode}. {$output}");
+
+    // Otherwise we're good!
+    return true;
+  }
+
+  public function psRestart($app, $ps)
+  {
+    if (!$app) throw new Exception("Expected an app.");
+    if (!$ps) throw new Exception("Expected a process id or type.");
+
+    if (strpos('.', $ps))
+    {
+      $restartBy = 'ps';
+    }
+    else
+    {
+      $restartBy = 'type';
+    }
+
+    // Hit the heroku json api
+    $ch = curl_init( );
+    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$app}/ps/restart");
+    curl_setopt($ch, CURLOPT_USERPWD, ":{$this->_apiKey}");
+    $data = array(
+        $restartBy => $ps
+    );
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $output   = curl_exec($ch);
+    $error    = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    // Handle errors
+    if ($error) throw new Exception("Error running curl: {$error}.");
+    if ($httpCode >= 400) throw new Exception("HTTP error: {$httpCode}. {$output}");
+
+    print_r($data);
+    print_r($output);
 
     // Otherwise we're good!
     return true;
