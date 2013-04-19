@@ -24,6 +24,7 @@ class JQAutoscaler
     protected $minSecondsToProcessDownScale = 5;   // app config; do we want to throttle downscaling for any reason?
     // @todo should this be moved to per-queue? probably yes
     protected $scaleDownMinJump = 20;
+    protected $exitIfNoJobs = false;
 
     protected $lastDetectHungJobsAt;
     protected $detectHungJobsInterval;
@@ -173,6 +174,7 @@ class JQAutoscaler
 
     public function run()
     {
+        $isHibernating = false;
         while (true) {
             $workersPerQueue = array();
 
@@ -189,16 +191,33 @@ class JQAutoscaler
 
             if (array_sum($workersPerQueue) === 0)
             {
-                foreach ($this->config as $queue => $queueConfig) {
-                    $this->scalable->setCurrentWorkersForQueue(0, $queue);
+                if (!$isHibernating)
+                {
+                    // @todo -- seems like this is not necessary; isn't it accomplished by the performAutoscaleChange() above?
+                    // maybe doing these 2 calls so close is what's causing our oddly unclean exits
+                    foreach ($this->config as $queue => $queueConfig) {
+                        $this->scalable->setCurrentWorkersForQueue(0, $queue);
+                    }
+
+                    if ($this->exitIfNoJobs)
+                    {
+                        $this->scalable->setCurrentWorkersForQueue(0, JQScalable::WORKER_AUTOSCALER);
+                        break;
+                    }
+
+                    print "Entering hibernation....\n";
+                    $isHibernating = true;
                 }
-                $this->scalable->setCurrentWorkersForQueue(0, JQScalable::WORKER_AUTOSCALER);
-                break;
+            }
+            else
+            {
+                if ($isHibernating) print "Exiting hibernation..,\n";
+                $isHibernating = false;
+
+                $this->detectHungJobs();
             }
 
-            $this->detectHungJobs();
-
-            JQWorker::sleep(1);
+            JQWorker::sleep(15);
         }
         print "Autoscaler exiting.\n";
     }
