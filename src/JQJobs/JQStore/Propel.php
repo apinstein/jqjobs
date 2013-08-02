@@ -23,9 +23,6 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
      * @param string Propel Object/Class name
      * @param object PropelPDO
      * @param array  OPTIONS:
-     *                  nextAlwaysWaitsForLock: If true, the next() call will wait for a lock on the DB rather than abort the dequeue attempt if the database is busy. DEFAULT: true
-     *                                          When true, you can always count on a worker getting a job if there is one. When false, it's possible that the worker is not able
-     *                                          to dequeue a job due to database load.
      *                  ...
      */
     public function __construct($propelClassName, $con, $options = array())
@@ -36,7 +33,6 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         $this->autoscaler = NULL;
 
         $this->options = array_merge(array(
-                                            'nextAlwaysWaitsForLock'        => true,
                                             'tableName'                     => 'JQStoreManagedJob',
                                             'jobIdColName'                  => 'JOB_ID',
                                             'jobCoalesceIdColName'          => 'COALESCE_ID',
@@ -151,33 +147,30 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
 
         $this->con->beginTransaction();
         try {
-            // lock the table so we can be sure to get mutex access to "next" job
-            // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
-            // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
-            $nowait = ($this->options['nextAlwaysWaitsForLock'] ? '' : 'NOWAIT');
-            $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode {$nowait};";
-            $this->con->query($lockSql);
-        } catch (PDOException $e) {
-            $this->con->rollback();
-            return $nextMJob;
-        }
-
-        try {
             // find "next" job
-            $c = new Criteria;
-            $c->add($this->options['jobStatusColName'], JQManagedJob::STATUS_QUEUED);
-            $c->add($this->options['jobStartDtsColName'], "({$this->options['jobStartDtsColName']} is null OR {$this->options['jobStartDtsColName']} < now())", Criteria::CUSTOM);
-            $c->addDescendingOrderByColumn($this->options['jobPriorityColName']);
-            $c->addAscendingOrderByColumn("coalesce(now(), {$this->options['jobStartDtsColName']})");    // jobs with no start date should be treated as "start now"
-            $c->addAscendingOrderByColumn($this->options['jobIdColName']);
-            if ($queueName)
+            $selectColumnsForPropelHydrate = join(',', call_user_func(array("{$this->propelClassName}Peer", 'getFieldNames'), BasePeer::TYPE_COLNAME));
+            // options is trusted w/r/t sql-injection
+            $sql = "select
+                        {$selectColumnsForPropelHydrate}
+                        from {$this->options['tableName']}
+                        where
+                            {$this->options['jobStatusColName']}  = '" . JQManagedJob::STATUS_QUEUED . "'
+                            AND ({$this->options['jobStartDtsColName']} IS NULL OR {$this->options['jobStartDtsColName']} < now())
+                            " . ($queueName ? "AND {$this->options['jobQueueNameColName']} = '" . pg_escape_string($queueName) . "'" : NULL) . "
+                        order by
+                            {$this->options['jobPriorityColName']} desc,
+                            coalesce(now(), {$this->options['jobStartDtsColName']}) asc,
+                            {$this->options['jobIdColName']} asc
+                        limit 1
+                    for update
+                ";
+            $stmt = $this->con->query($sql);
+            if ($stmt->rowCount() === 1)
             {
-                $c->add($this->options['jobQueueNameColName'], $queueName);
-            }
-            $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'doSelectOne'), $c, $this->con);
+                $dbJobRow = $stmt->fetch();
+                $dbJob = new $this->propelClassName;
+                $dbJob->hydrate($dbJobRow);
 
-            if ($dbJob)
-            {
                 $nextMJob = new JQManagedJob($this);
                 $nextMJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
                 $nextMJob->markJobStarted();
