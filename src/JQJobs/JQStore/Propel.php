@@ -145,6 +145,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         return $this->getByCoalesceId($coalesceId);
     }
 
+    const ADVISORY_LOCK_ID = 100000;
     public function next($queueName = NULL)
     {
         $nextMJob = NULL;
@@ -155,8 +156,9 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
             // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
             // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
             $nowait = ($this->options['nextAlwaysWaitsForLock'] ? '' : 'NOWAIT');
-            $lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode {$nowait};";
-            $this->con->query($lockSql);
+            //$lockSql = "lock table {$this->options['tableName']} in EXCLUSIVE mode {$nowait};";
+            $lockSql = "select pg_advisory_lock(" . self::ADVISORY_LOCK_ID . ");";
+            $stmt = $this->con->query($lockSql);
         } catch (PDOException $e) {
             $this->con->rollback();
             return $nextMJob;
