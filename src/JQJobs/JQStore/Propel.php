@@ -76,6 +76,10 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
             $coalesceId = $job->coalesceId();
             if ($coalesceId !== NULL)
             {
+                // @todo is this lock really necessary? if the contract of JQJobs is that it guarantees jobs run at least once, then 
+                // is it even necessary to ever lock for this? the risk is only that the existing job would be dequeued while a coalesce was pending.
+                // worst case seems that we should be using a select ... for update here? certainly that would minimize the surface are of the mutex for performance reasons.
+                //
                 // OPTIMIZATION: only lock the table when job being enqueued has a coalesceId; otherwise inserts do not need to be exclusive with other activity (deletes, updates, etc)
 
                 // lock the table so we can be sure to get mutex to safely enqueue job without risk of having a colliding coalesceId.
