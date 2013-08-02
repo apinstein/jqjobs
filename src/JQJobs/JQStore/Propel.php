@@ -135,12 +135,21 @@ class JQStore_Propel implements JQStore
         }
     }
 
+    const ADVISORY_LOCK_ID = 100000;
     public function next($queueName = NULL)
     {
         $nextMJob = NULL;
 
         $this->con->beginTransaction();
         try {
+            // @TODO clean up this comment
+            // lock the table so we can be sure to get mutex access to "next" job
+            // EXCLUSIVE mode is used b/c it's the most exclusive mode that doesn't conflict with pg_dump (which uses ACCESS SHARE)
+            // see http://stackoverflow.com/questions/6507475/job-queue-as-sql-table-with-multiple-consumers-postgresql/6702355#6702355
+            $lockSql = "select pg_advisory_lock(" . self::ADVISORY_LOCK_ID . ");";
+            $stmt = $this->con->query($lockSql);
+
+            // @TODO not sure that select ... for update is needed w/advisory locking?
             // find "next" job
             $selectColumnsForPropelHydrate = join(',', call_user_func(array("{$this->propelClassName}Peer", 'getFieldNames'), BasePeer::TYPE_COLNAME));
             // options is trusted w/r/t sql-injection
