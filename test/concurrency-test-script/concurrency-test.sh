@@ -13,8 +13,8 @@ dbpass=
 # if you change any DB params be sure to switch the dsn in ../../lib/propel/jqjobs-conf.php
 
 # TEST PARAMS
-queuecount=100
-concurrency=50
+queuecount=500
+concurrency=10
 jobs_per_worker=20
 
 ## INTERNALS ##
@@ -55,9 +55,9 @@ ${pg_bin_dir}/pg_dump -U ${dbuser} -h ${dbhost} -p ${dbport} ${db} | gzip -9 > $
 pg_dump_pid=$!
 
 echo "Enqueueing $queuecount jobs... if this is not printing output then it's blocked against pg_dump"
-time ${seq_bin} $(expr $queuecount / $jobs_per_worker) | xargs -n 1 -P $concurrency -I {} ${php_bin} jq-test-enqueue.php {} ${jobs_per_worker}
+time ${seq_bin} $(expr $queuecount / $jobs_per_worker) | xargs -n 1 -P $concurrency -I {} ${php_bin} jq-test-enqueue.php {} ${jobs_per_worker} && echo "Enqueueing done!" &
 echo "Starting $concurrency workers to process jobs. If you don't see output before the pg_dump finishes, then it means the workers ae blocked against pg_dump"
-time ${seq_bin} $(expr $queuecount / $jobs_per_worker) | xargs -n 1 -P $concurrency ${php_bin} jq-test-worker.php ${jobs_per_worker}
+time ${seq_bin} $(expr $queuecount / $jobs_per_worker) | xargs -n 1 -P $concurrency ${php_bin} jq-test-worker.php ${jobs_per_worker} && echo "Job processing done!"
 
 echo "Displaying leftover jobs (should be 0 if concurrency worked correctly)"
 ${pg_bin_dir}/psql -t -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "select count(*) as unprocessed_job_count from jqstore_managed_job;"
