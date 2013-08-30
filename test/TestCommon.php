@@ -2,11 +2,21 @@
 
 require_once dirname(__FILE__) . '/../src/JQJobs/JQJobs.php';
 
-ini_set('include_path', 
-    dirname(__FILE__) . "/../externals/pear/php"
-    . ":" . dirname(__FILE__) . "/../lib/propel"
-);
-require_once 'propel/Propel.php';
+$composerAutoloader = dirname(__FILE__) . '/../vendor/autoload.php';
+if (file_exists($composerAutoloader))
+{
+    ini_set('include_path', dirname(__FILE__) . "/../lib/propel");
+    require_once $composerAutoloader;
+}
+else
+{
+    ini_set('include_path', 
+        dirname(__FILE__) . "/../externals/pear/php"
+        . ":" . dirname(__FILE__) . "/../lib/propel"
+    );
+    require_once 'propel/Propel.php';
+}
+
 Propel::init(dirname(__FILE__) . "/../lib/propel/jqjobs-conf.php");
 
 /************** JQStore_Propel Genterator (TEST DB) ********************/
