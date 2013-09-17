@@ -109,7 +109,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
             }
  
             $this->con->commit();
-        } catch (PropelException $e) {
+        } catch (Exception $e) {
             $this->con->rollback();
             throw $e;
         }
@@ -126,12 +126,21 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         $c->add($this->options['jobMaxRuntimeSecondsColName'], "{$this->options['jobStartDtsColName']} + ({$this->options['jobMaxRuntimeSecondsColName']}||' seconds')::interval < now()", Criteria::CUSTOM);
         $possiblyHungJobs = call_user_func(array("{$this->propelClassName}Peer", 'doSelect'), $c, $this->con);
         foreach ($possiblyHungJobs as $possiblyHungJob) {
-            $mJob = $this->getWithMutex($possiblyHungJob->getJobId());
-            if ($mJob->isPastMaxRuntimeSeconds())   // verify with the JQJobs calc
-            {
-                $mJob->retry(true);
+            // @todo This is a bit ugly; we probably need something like a JQStore::performWithMutex($jobId, $f) where we can wrap f internally in a try/catch to do this more cleanly
+            $this->con->beginTransaction();
+            try {
+                $mJob = $this->getWithMutex($possiblyHungJob->getJobId());
+
+                if ($mJob->isPastMaxRuntimeSeconds())   // verify with the JQJobs calc
+                {
+                    $mJob->retry(true);
+                }
+                $this->clearMutex($mJob->getJobId());
+                $this->con->commit();
+            } catch (Exception $e) {
+                $this->abort();
+                throw $e;
             }
-            $this->clearMutex($mJob->getJobId());
         }
     }
 
@@ -331,10 +340,8 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
 
     public function abort()
     {
-        // delete this while() block once we are comfortable empiricaly that this is true
         while ($this->con->isInTransaction())
         {
-            throw new Exception("abort() called while transaction in progress, shouldn't happen anymore.");
             $this->con->rollback();
         }
     }
