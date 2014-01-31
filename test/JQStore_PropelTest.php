@@ -99,16 +99,28 @@ class JQStore_PropelTest extends JQStore_AllTest
     function testJqJobsCatchesUnserializeExceptions()
     {
         // create a queuestore
-        $job = $this->jqStore->enqueue(new SampleExceptionalUnserializerJob(), array('queueName' => 'test'));
+        $mJob = $this->jqStore->enqueue(new SampleExceptionalUnserializerJob("custom data"), array('queueName' => 'test'));
+        $this->assertNotNull($mJob->getJob(), "Verifying that job is legit...");
+        $this->assertEquals("custom data", $mJob->getJob()->data, "Verifying job data...");
+
+        $mJobArray = $mJob->toArray();
+        $serializedJob = $mJobArray['job'];
 
         // Start a worker to run the jobs.
         $w = new JQWorker($this->jqStore, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
         $w->start();
 
         // have to re-fetch job since db state changed...
-        $job = $this->jqStore->get($job->getJobId());
+        $mJob = $this->jqStore->get($mJob->getJobId());
 
         // we only get here if the worker cleanly exited.
-        $this->assertEquals(JQManagedJob::STATUS_FAILED, $job->getStatus());
+        $this->assertEquals(JQManagedJob::STATUS_FAILED, $mJob->getStatus());
+
+        // ensure that the "job" is still as expected...
+        $this->assertEquals($serializedJob, $mJob->getJob(), "Serialized JQJob data has been adulterated.");
+
+        // ensure that the failed message says something about de-serialization failure?
+        $this->assertEquals(JQManagedJob::STATUS_FAILED, $mJob->getStatus(), "Job should be marked as failed.");
+        $this->assertEquals("JQManagedJob.job is not a JQJob instance.", $mJob->getErrorMessage(), "Unexpected job error message.");
     }
 }

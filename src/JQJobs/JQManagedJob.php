@@ -170,8 +170,18 @@ final class JQManagedJob implements JQJob
         foreach ($this->persistableFields() as $k) {
             switch ($k) {
                 case 'job':
-                    $ser = serialize($this->$k);
-                    $v = base64_encode($ser);
+                    $job = $this->$k;
+                    if ($job instanceof JQJob)
+                    {
+                        $ser = serialize($this->$k);
+                        // @todo -- should there be some error handling here?
+                        $v = base64_encode($ser);
+                    }
+                    else
+                    {
+                        // already serialized (or null)
+                        $v = $this->$k;
+                    }
                     break;
                 case 'creationDts':
                 case 'startDts':
@@ -207,11 +217,13 @@ final class JQManagedJob implements JQJob
 
             switch ($k) {
                 case 'job':
-                    $ser = base64_decode($data[$k]);
+                    $unserializedJobBase64 = $data[$k]; // data is base64+serialized, or NULL
                     try {
-                        $v = unserialize($ser); // will result in object JQJob
+                        $ser = base64_decode($unserializedJobBase64);
+                        if ($ser === false) throw new Exception("base64_decode failed");
+                        $v = unserialize($ser); // will result in object JQJob, but this can fail for many reasons
                     } catch (Exception $e) {
-                        $v = NULL;
+                        $v = $unserializedJobBase64;
                     }
                     break;
                 case 'creationDts':
@@ -298,6 +310,11 @@ final class JQManagedJob implements JQJob
             // @todo we need a logger here?
             print "Userland statusDidChange() reported an error: {$e->getMessage()}";
         }
+    }
+
+    public function getErrorMessage()
+    {
+        return $this->errorMessage;
     }
 
     public function getQueueName()
