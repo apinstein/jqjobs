@@ -120,11 +120,6 @@ class JQStore_Propel implements JQStore
                 $nextMJob = new JQManagedJob($this);
                 $nextMJob->fromArray($dbJob->toArray(BasePeer::TYPE_STUDLYPHPNAME));
                 $nextMJob->markJobStarted();
-                if (!($nextMJob->getJob() instanceof JQJob))
-                {
-                    $nextMJob->markJobFailed("JQManagedJob.job is not a JQJob instance.");
-                    $nextMJob = NULL;
-                }
             }
             $this->con->commit();
         } catch (Exception $e) {

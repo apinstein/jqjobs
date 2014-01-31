@@ -109,7 +109,9 @@ class SampleAsyncJob implements JQJob
 
 class SampleExceptionalUnserializerJob implements JQJob
 {
-    function __construct() { }
+    public $data = NULL;
+
+    function __construct($someData) { $this->data = $someData; }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
     function cleanup() { }
     function coalesceId() { return NULL; }

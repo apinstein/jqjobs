@@ -117,8 +117,20 @@ class JQWorker
             $this->currentJob = $this->jqStore->next($this->options['queueName']);
             if ($this->currentJob)
             {
-                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$this->currentJob->description()}", true);
-                $result = $this->currentJob->run($this->currentJob);
+                $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] Job checked out.", true);
+
+                 // attempt to un-serialize the job
+                 if ($this->currentJob->getJob() instanceof JQJob)
+                 {
+                     $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] {$this->currentJob->description()}", true);
+                     $result = $this->currentJob->run($this->currentJob);
+                 }
+                 else
+                 {
+                     $this->currentJob->markJobFailed("JQManagedJob.job is not a JQJob instance.");
+                     $result = "No JQJob found.";
+                 }
+
                 if ($result === NULL)
                 {
                     $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}]", true);
