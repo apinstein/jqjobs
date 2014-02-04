@@ -48,6 +48,8 @@ class JQWorker
                                             'wakeupEvery'           => 5,
                                             'verbose'               => false,
                                             'silent'                => false,
+                                            'minWorkFactor'         => NULL,
+                                            'maxWorkFactor'         => NULL,
                                             'guaranteeMemoryForJob' => 0.2 * $this->getMemoryLimitInBytes(),
                                             'exitIfNoJobs'          => false,
                                             'exitAfterNJobs'        => NULL,
@@ -56,6 +58,8 @@ class JQWorker
                                      $options
                                     );
         $this->pid = getmypid();
+
+        if ($this->options['minWorkFactor'] !== NULL and $this->options['maxWorkFactor'] !== NULL and $this->options['minWorkFactor'] > $this->options['maxWorkFactor']) throw new Exception("minWorkFactor must be less than maxWorkFactor.");
 
         // install signal handlers if possible
         declare(ticks = 1);
@@ -114,7 +118,7 @@ class JQWorker
             $this->memCheck();
             $this->codeCheck();
 
-            $this->currentJob = $this->jqStore->next($this->options['queueName']);
+            $this->currentJob = $this->jqStore->next($this->options['queueName'], $this->options['minWorkFactor'], $this->options['maxWorkFactor']);
             if ($this->currentJob)
             {
                 $this->log("[Job: {$this->currentJob->getJobId()} {$this->currentJob->getStatus()}] Job checked out.", true);

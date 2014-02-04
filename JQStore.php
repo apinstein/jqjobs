@@ -30,10 +30,12 @@ interface JQStore
      * NOTE: Implementers should make sure that next() has a mutex to be sure that no two workers end up running the same job twice.
      *
      * @param string Queue name (NULL = default queue)
+     * @param integer Minimum work factor that we are interested in; NULL for no minimum workFactor filter.
+     * @param integer Maximum work factor that we are interested in; NULL for no maximum workFactor filter.
      * @return object JQManagedJob
      * @throws object Exception
      */
-    function next($queueName = null);
+    function next($queueName = null, $minWorkFactor = NULL, $maxWorkFactor = NULL);
 
     /**
      * See if there is already a job for the given coalesceId in the queue.
