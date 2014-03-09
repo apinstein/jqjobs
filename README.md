@@ -101,3 +101,11 @@ See http://apinstein.pearfarm.org/apinstein/jqjobs
 SOURCE
 
 https://github.com/apinstein/jqjobs
+
+### JQStore Backends
+
+## Propel
+Currently the only db-backed JQStore implememtation is for Propel ORM. All migrations needed for JQJobs/Propel to function are in the migrations/ folder which is expected to be run with mp (github.com/apinstein/mp). This could easily be adapter into a Propel plugin, but hasn't yet.
+
+In any case, just ensure that if you are installing/upgrading your JQJobs that you copy and re-sequence the migrations as needed.
+
