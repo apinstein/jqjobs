@@ -147,12 +147,12 @@ class JQWorker
                 if ($this->currentJob)
                 {
                     try {
-                        $this->logJobStatus($this->currentJob, "Job checked out.", false);
+                        $this->logJobStatus($this->currentJob, "Job checked out.");
 
                         // attempt to un-serialize the job
                         if ($this->currentJob->getJob() instanceof JQJob)
                         {
-                            $this->logJobStatus($this->currentJob, $this->currentJob->description(), true);
+                            $this->logJobStatus($this->currentJob, $this->currentJob->description());
                             $result = $this->currentJob->run($this->currentJob);
                         }
                         else
@@ -163,7 +163,7 @@ class JQWorker
 
                         if ($result === NULL)
                         {
-                            $this->logJobStatus($this->currentJob, "Done!", true);
+                            $this->logJobStatus($this->currentJob, "Done!");
                         }
                         else
                         {
@@ -179,7 +179,7 @@ class JQWorker
                         // although the job might've finished, we couldn't tell JQStore, thus the loop can't be closed
                         // Therefore, we will gracefullyRetryCurrentJob() so that it can run again another day and close out the loop gracefully
                         $result = $e->getMessage();
-                        $this->logJobStatus($this->currentJob, "signal raised during job->run()");
+                        $this->logJobStatus($this->currentJob, "signal raised during job->run()", true);
                         $this->gracefullyRetryCurrentJob($this->currentJob);
                         $this->currentJob = NULL;
                         // now that we've cleaned up, the run loop will gracefully exit
@@ -351,7 +351,7 @@ class JQWorker
     {
         if ($job)
         {
-            $this->logJobStatus($job, "Gracefully re-trying current job due to signal interruption.");
+            $this->logJobStatus($job, "Gracefully re-trying current job due to signal interruption.", true);
             // don't trust $job; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
             // during this time if there is a failure, the job is in an indeterminate state since PHP doesn't have un-interruptible blocks.
             // THUS in this case we care only if the DB thinks the job is checked out/running; if so, we just retry it.
@@ -362,14 +362,14 @@ class JQWorker
             try {
                 $persistedVersionOfJob = $this->jqStore->get($job->getJobId());
             } catch (JQStore_JobNotFoundException $e) {
-                $this->logJobStatus($job, "Completed job already persisted via JQStore.");
+                $this->logJobStatus($job, "Completed job already persisted via JQStore.", true);
                 return;
             }
             if ($persistedVersionOfJob && $persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
             {
-                $this->logJobStatus($persistedVersionOfJob, "Failing job with mulligan.");
+                $this->logJobStatus($persistedVersionOfJob, "Failing job with mulligan.", true);
                 $persistedVersionOfJob->markJobFailed("Worker was asked to terminate immediately.", true);
-                $this->logJobStatus($persistedVersionOfJob, "Successfully failed job with mulligan.");
+                $this->logJobStatus($persistedVersionOfJob, "Successfully failed job with mulligan.", true);
             }
          }
     }
