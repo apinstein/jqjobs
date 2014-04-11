@@ -274,6 +274,11 @@ final class JQManagedJob implements JQJob
         return $this->jobId;
     }
 
+    public function getPriority()
+    {
+        return $this->priority;
+    }
+
     public function getStatus()
     {
         return $this->status;
