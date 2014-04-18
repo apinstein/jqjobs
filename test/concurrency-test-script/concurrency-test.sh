@@ -4,6 +4,9 @@
 # It also helps test the locking to be sure the queue is uninterrupted by pg_dump (backup).
 # To play with different lock modes, see JQStore_Propel::next()
 
+set -e # stop on error
+#set -x # print each statement before running
+
 ## DB CONFIG
 db=jqjobs_test
 dbuser=postgres
@@ -13,15 +16,15 @@ dbpass=
 # if you change any DB params be sure to switch the dsn in ../../lib/propel/jqjobs-conf.php
 
 # TEST PARAMS
-queuecount=500
+queuecount=10000
 concurrency=10
 jobs_per_worker=20
 
 ## INTERNALS ##
 tmp_backup=___temp_backup__
-pg_bin_dir=/opt/local/lib/postgresql92/bin
+pg_bin_dir=/opt/local/lib/postgresql93/bin
 seq_bin=/opt/local/libexec/gnubin/seq
-php_bin=php53
+php_bin=php54
 
 export db dbuser dbhost dbport dbpass
 if [ -n ${dbpass} ]; then
@@ -35,8 +38,9 @@ fi
 echo "Provisioning test database"
 ${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d postgres -c "drop database if exists ${db};"
 ${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d postgres -c "create database ${db};"
-${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "drop table jqstore_managed_job;"
-${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "drop table mp_version;"
+${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "drop table if exists jqstore_managed_job;"
+${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "drop table if exists mp_version;"
+
 ${pg_bin_dir}/psql -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "\\l" | grep ${db}
 if [ $? -ne 0 ]; then
     echo "Couldn't provision test DB."
@@ -46,8 +50,8 @@ fi
 
 echo "Creating tables..."
 pushd ../..
-comice exec mp -f -V 0
-comice exec mp -f -x "pgsql:dbname=${db};user=${dbuser};${dbpassdsn};host=${dbhost};port=${dbport}" -m head
+$php_bin ./vendor/bin/mp -f -V 0
+$php_bin ./vendor/bin/mp -f -x "pgsql:dbname=${db};user=${dbuser};${dbpassdsn};host=${dbhost};port=${dbport}" -m head
 popd
 
 echo "Starting pg_dump process in background..."
