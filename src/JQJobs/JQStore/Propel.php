@@ -51,9 +51,6 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         foreach (array('jobIdColName', 'jobQueueNameColName', 'jobStatusColName', 'jobPriorityColName', 'jobStartDtsColName', 'jobEndDtsColName') as $colName) {
             $this->options[$colName] = eval("return {$this->propelClassName}Peer::{$this->options[$colName]};");
         }
-
-        // bad things happen without this!
-        Propel::disableInstancePooling();
     }
 
     public function setAutoscaler(JQAutoscaler $as)
@@ -227,6 +224,9 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
 
     private function getDbJob($jobId)
     {
+        // always load job from DB... due to the crazy re-entrancy issues due to signal handling, it's best to never trust the Propel cache.
+        call_user_func(array("{$this->propelClassName}Peer", 'clearInstancePool'));
+
         $dbJob = call_user_func(array("{$this->propelClassName}Peer", 'retrieveByPK'), $jobId, $this->con);
         if (!$dbJob) throw new JQStore_JobNotFoundException("Couldn't find jobId {$jobId} in database.");
         return $dbJob;

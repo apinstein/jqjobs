@@ -349,12 +349,15 @@ class JQWorker
         return;
     }
 
-    private function gracefullyRetryCurrentJob($job)
+    /**
+     * Only public for testing purposes....
+     */
+    public function gracefullyRetryCurrentJob(JQManagedJob $mJob)
     {
-        if ($job)
+        if ($mJob)
         {
-            $this->logJobStatus($job, "Gracefully re-trying current job due to signal interruption.", true);
-            // don't trust $job; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
+            $this->logJobStatus($mJob, "Gracefully re-trying current job due to signal interruption.", true);
+            // don't trust $mJob; there is a race between when the job *actually* finishes and we can persist it to the JQStore...
             // during this time if there is a failure, the job is in an indeterminate state since PHP doesn't have un-interruptible blocks.
             // THUS in this case we care only if the DB thinks the job is checked out/running; if so, we just retry it.
             // Since we EXIT the script after this block, we don't have to worry about parallel universe collisions.
@@ -362,9 +365,9 @@ class JQWorker
             $this->jqStore->abort();
             $persistedVersionOfJob = NULL;
             try {
-                $persistedVersionOfJob = $this->jqStore->get($job->getJobId());
+                $persistedVersionOfJob = $this->jqStore->get($mJob->getJobId());
             } catch (JQStore_JobNotFoundException $e) {
-                $this->logJobStatus($job, "Completed job already persisted via JQStore.", true);
+                $this->logJobStatus($mJob, "Completed job already persisted via JQStore.", true);
                 return;
             }
             if ($persistedVersionOfJob && $persistedVersionOfJob->getStatus() === JQManagedJob::STATUS_RUNNING)
