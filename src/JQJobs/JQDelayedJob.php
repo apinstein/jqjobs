@@ -26,7 +26,7 @@
  * 
  * @package JQJobs
  */
-class JQDelayedJob implements JQJob
+class JQDelayedJob extends JQJob
 {
     protected $callbackF;
     protected $callbackArgs;

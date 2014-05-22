@@ -4,7 +4,7 @@
  * A test queue worker. Processes 1 job (or 0) and immediately exits.
  */
 require_once dirname(__FILE__) . '/../TestCommon.php';
-class UninterruptibleJob implements JQJob
+class UninterruptibleJob extends JQJob
 {
     protected $runForNSeconds = 3;
 

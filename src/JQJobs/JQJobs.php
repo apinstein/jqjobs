@@ -25,7 +25,7 @@
  *
  * // The minimal amount of work needed to use a JQJobs is 1) create at least one job; 2) create a queuestore; 3) add jobs; 4) start a worker.
  * // 1) Create a job
- * class SampleJob implements JQJob
+ * class SampleJob extends JQJob
  * {
  *     function __construct($info) { $this->info = $info; }
  *     function run(JQManagedJob $mJob) { print $this->description() . "\n"; } // no-op

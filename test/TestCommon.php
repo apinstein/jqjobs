@@ -28,7 +28,7 @@ function getTestJQStore()
 
 /************** TEST JOBS ****************/
 
-class CTestJob implements JQJob
+class CTestJob extends JQJob
 {
     protected $job;
     function __construct($jobid)
@@ -46,7 +46,7 @@ class CTestJob implements JQJob
     function coalesceId() { return NULL; }
 }
 
-class QuietSimpleJob implements JQJob
+class QuietSimpleJob extends JQJob
 {
     protected $job;
     function __construct($jobid)
@@ -67,7 +67,7 @@ class SampleJobCounter
     public static function count() { return self::$counter; }
     public static function increment() { self::$counter++; }
 }
-class SampleJob implements JQJob
+class SampleJob extends JQJob
 {
     function run(JQManagedJob $mJob) // no-op
     {
@@ -93,7 +93,7 @@ class SampleCoalescingJob extends SampleJob
     function description() { return "Coalescing job {$this->id}"; }
 }
 
-class SampleFailJob implements JQJob
+class SampleFailJob extends JQJob
 {
     function __construct($info) { $this->info = $info; }
     function run(JQManagedJob $mJob)
@@ -107,7 +107,7 @@ class SampleFailJob implements JQJob
     function description() { return "Sample FAIL job"; }
 }
 
-class SampleLoggingJob implements JQJob
+class SampleLoggingJob extends JQJob
 {
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function cleanup() { }
@@ -119,7 +119,7 @@ class SampleLoggingJob implements JQJob
     function description() { return "Sample callback job"; }
 }
 
-class SampleCallbackJob implements JQJob
+class SampleCallbackJob extends JQJob
 {
     function __construct($callback) { $this->callback = $callback; }
     function run(JQManagedJob $mJob) { return call_user_func($this->callback); }
@@ -129,7 +129,7 @@ class SampleCallbackJob implements JQJob
     function description() { return "Sample callback job"; }
 }
 
-class SampleAsyncJob implements JQJob
+class SampleAsyncJob extends JQJob
 {
     function __construct($info) { $this->info = $info; }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
@@ -139,7 +139,7 @@ class SampleAsyncJob implements JQJob
     function description() { return "Sample async job"; }
 }
 
-class SampleExceptionalUnserializerJob implements JQJob
+class SampleExceptionalUnserializerJob extends JQJob
 {
     public $data = NULL;
 

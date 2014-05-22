@@ -10,7 +10,7 @@
  *
  * IMPORTANT: Objects implementing JQJob will be serialized into the JQManagedJob during persistence, so it's important that they can be safely seriazlied.
  */
-interface JQJob
+abstract class JQJob
 {
     /**
      * Run the job.
@@ -18,14 +18,14 @@ interface JQJob
      * @return string One of JQManagedJob::STATUS_WAIT_ASYNC or JQManagedJob::STATUS_COMPLETED. Throw an exception to indicate an error.
      * @throws object Exception Throw an exception if there is a problem.
      */
-    function run(JQManagedJob $mJob);
+    abstract function run(JQManagedJob $mJob);
 
     /**
      * Cleanup any resources held by the job.
      *
      * This gives jobs a chance to delete any resources they may be using before the JQManagedJob is removed.
      */
-    function cleanup();
+    abstract function cleanup();
 
     /**
      * Jobs can use this delegate method to report failures, or archive, them, or whatver they want.
@@ -37,7 +37,7 @@ interface JQJob
      * @param string The message accompanying the status change.
      * @see JQStore::statusDidChange()
      */
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
+    abstract function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
 
     /**
      * A description for the job.
@@ -46,7 +46,7 @@ interface JQJob
      *
      * @return string
      */
-    function description();
+    abstract function description();
 
     /**
      * A unique ID for the job.
@@ -61,5 +61,5 @@ interface JQJob
      *
      * @return string
      */
-    function coalesceId();
+    abstract function coalesceId();
 }
