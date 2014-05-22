@@ -12,6 +12,14 @@
  */
 abstract class JQJob
 {
+    function enqueueOptions()
+    {
+        return array(
+            'priority'    => 0,
+            'maxAttempts' => 1,
+        );
+    }
+
     /**
      * Run the job.
      *
