@@ -12,10 +12,10 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     {
         $coalesceId = 1234;
 
-        $firstJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
+        $firstJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
         $this->assertEquals(1, $this->jqStore->count('test'));
 
-        $secondJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
+        $secondJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
         $this->assertEquals(1, $this->jqStore->count('test'));
         $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
     }
@@ -25,7 +25,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $q = $this->jqStore;
         $this->assertEquals(0, $q->count('test'));
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+            $q->enqueue(new SampleJob());
         }
         $this->assertEquals(10, $q->count('test'));
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
@@ -37,7 +37,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $q = $this->jqStore;
         $found = array();
         foreach (range(1,10) as $i) {
-            $enqueuedJob = $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+            $enqueuedJob = $q->enqueue(new SampleJob());
             $found[$enqueuedJob->getJobId()] = false;
         }
         $foundCount = 0;
@@ -63,7 +63,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+            $q->enqueue(new SampleJob());
         }
 
         $this->assertEquals(10, $q->count());
@@ -101,7 +101,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function testDetectHungJobs($maxRuntimeSeconds, $currentStatus, $startDts, $expectedMulligan, $description)
     {
         $q = $this->jqStore;
-        $mJob = $q->enqueue(new QuietSimpleJob(1), array('queueName' => 'test', 'maxRuntimeSeconds' => $maxRuntimeSeconds));
+        $mJob = $q->enqueue(new QuietSimpleJob(1, array('maxRuntimeSeconds' => $maxRuntimeSeconds)));
         if ($currentStatus === JQManagedJob::STATUS_RUNNING)
         {
             $mJob->markJobStarted(new DateTime($startDts));

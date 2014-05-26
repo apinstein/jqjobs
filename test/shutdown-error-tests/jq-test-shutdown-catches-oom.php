@@ -33,7 +33,7 @@ class SampleFatalJob extends SampleLoggingJob
 
 // run a job that will FATAL
 $q = new JQStore_Array();
-$goodJob = $q->enqueue(new SampleFatalJob(), array('queueName' => 'test'));
+$goodJob = $q->enqueue(new SampleFatalJob());
 if ($q->count('test') !== 1) throw new Exception("assert failed");
 SampleJobCounter::reset();
 

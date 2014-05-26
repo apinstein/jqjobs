@@ -32,7 +32,7 @@ class JQStore_PropelTest extends JQStore_AllTest
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new QuietSimpleJob($i), array('queueName' => 'test'));
+            $q->enqueue(new QuietSimpleJob($i));
         }
 
         $this->assertEquals(10, $q->count());
@@ -80,8 +80,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         // Add some jobs
         $coalesceId  = 'foo';
         $insertedJob = new SampleCoalescingJob($coalesceId);
-        $options     = array('queueName' => 'test');
-        $this->jqStore->enqueue($insertedJob, $options);
+        $this->jqStore->enqueue($insertedJob);
 
         // Make sure we have a job enqueued
         // Helpful for debugging...
@@ -99,7 +98,7 @@ class JQStore_PropelTest extends JQStore_AllTest
     function testJqJobsCatchesUnserializeExceptions()
     {
         // create a queuestore
-        $mJob = $this->jqStore->enqueue(new SampleExceptionalUnserializerJob("custom data"), array('queueName' => 'test'));
+        $mJob = $this->jqStore->enqueue(new SampleExceptionalUnserializerJob("custom data"));
         $this->assertNotNull($mJob->getJob(), "Verifying that job is legit...");
         $this->assertEquals("custom data", $mJob->getJob()->data, "Verifying job data...");
 
@@ -150,7 +149,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         $q->abort();
         $this->assertEquals(0, $q->count('test'), "Test database not empty; you should re-initialize the test db.");
 
-        $mJob = $q->enqueue(new SampleFailJob($i), array('queueName' => 'test'));
+        $mJob = $q->enqueue(new SampleFailJob($i));
 
         // mark job as running in DB to simulate a job that's running when interrupted
         $mJob->markJobStarted();    // will save to DB

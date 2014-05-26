@@ -28,6 +28,21 @@ function getTestJQStore()
 
 /************** TEST JOBS ****************/
 
+// A simple no-op job that uses a test queue for other test jobs to override
+class JQTestJob extends JQJob
+{
+    function __construct($queueOptions = array())
+    {
+        $this->setEnqueueOption( 'queueName', 'test' );
+        $this->setEnqueueOptions( $queueOptions );
+    }
+    function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
+    function cleanup() { }
+    function coalesceId() { }
+    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) { }
+    function description() { }
+}
+
 class CTestJob extends JQJob
 {
     protected $job;
@@ -46,11 +61,12 @@ class CTestJob extends JQJob
     function coalesceId() { return NULL; }
 }
 
-class QuietSimpleJob extends JQJob
+class QuietSimpleJob extends JQTestJob
 {
     protected $job;
-    function __construct($jobid)
+    function __construct($jobid, $enqueueOptions=array())
     {
+        parent::__construct($enqueueOptions);
         $this->job=$jobid;
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
@@ -67,7 +83,7 @@ class SampleJobCounter
     public static function count() { return self::$counter; }
     public static function increment() { self::$counter++; }
 }
-class SampleJob extends JQJob
+class SampleJob extends JQTestJob
 {
     function run(JQManagedJob $mJob) // no-op
     {
@@ -85,6 +101,7 @@ class SampleCoalescingJob extends SampleJob
     function __construct($id)
     {
         $this->id = $id;
+        parent::__construct();
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function coalesceId() { return $this->id; }
@@ -93,9 +110,13 @@ class SampleCoalescingJob extends SampleJob
     function description() { return "Coalescing job {$this->id}"; }
 }
 
-class SampleFailJob extends JQJob
+class SampleFailJob extends JQTestJob
 {
-    function __construct($info) { $this->info = $info; }
+    function __construct($info, $enqueueOptions = array())
+    {
+        parent::__construct($enqueueOptions);
+        $this->info = $info;
+    }
     function run(JQManagedJob $mJob)
     {
         trigger_error("something went boom", E_USER_ERROR);
@@ -107,7 +128,7 @@ class SampleFailJob extends JQJob
     function description() { return "Sample FAIL job"; }
 }
 
-class SampleLoggingJob extends JQJob
+class SampleLoggingJob extends JQTestJob
 {
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function cleanup() { }
@@ -116,7 +137,7 @@ class SampleLoggingJob extends JQJob
     {
         print "Status change: {$oldStatus} => {$mJob->getStatus()}\n";
     }
-    function description() { return "Sample callback job"; }
+    function description() { return "Sample logging job"; }
 }
 
 class SampleCallbackJob extends JQJob
@@ -129,9 +150,13 @@ class SampleCallbackJob extends JQJob
     function description() { return "Sample callback job"; }
 }
 
-class SampleAsyncJob extends JQJob
+class SampleAsyncJob extends JQTestJob
 {
-    function __construct($info) { $this->info = $info; }
+    function __construct($info, $enqueueOptions = array())
+    {
+        $this->info = $info;
+        parent::__construct($enqueueOptions);
+    }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
     function cleanup() { }
     function coalesceId() { return NULL; }
@@ -139,11 +164,14 @@ class SampleAsyncJob extends JQJob
     function description() { return "Sample async job"; }
 }
 
-class SampleExceptionalUnserializerJob extends JQJob
+class SampleExceptionalUnserializerJob extends JQTestJob
 {
     public $data = NULL;
 
-    function __construct($someData) { $this->data = $someData; }
+    function __construct($someData) {
+        $this->data = $someData;
+        parent::__construct();
+    }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
     function cleanup() { }
     function coalesceId() { return NULL; }

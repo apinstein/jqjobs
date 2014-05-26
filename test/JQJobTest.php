@@ -2,24 +2,15 @@
 
 require_once dirname(__FILE__) . '/TestCommon.php';
 
-class JQTestJob extends JQJob
-{
-    function run(JQManagedJob $mJob) { }
-    function cleanup() { }
-    function coalesceId() { }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) { }
-    function description() { }
-}
-
 class JobWithOptions extends JQTestJob
 {
-    function enqueueOptions()
+    function getEnqueueOptions()
     {
         return array_merge(
-            parent::enqueueOptions(),
+            parent::getEnqueueOptions(),
             array(
-                'priority'    => -1,
-                'queueName'   => 'test',
+                'priority'          => -1,
+                'maxRuntimeSeconds' => 25,
             )
         );
     }
@@ -31,17 +22,77 @@ class JQJobTest extends PHPUnit_Framework_TestCase
     {
         $testJob = new JQTestJob();
         $this->assertEquals(
-            array('priority' => 0, 'maxAttempts' => 1),
-            $testJob->enqueueOptions()
+            array('priority' => 0, 'maxAttempts' => 1, 'queueName' => 'test'),
+            $testJob->getEnqueueOptions()
         );
     }
 
-    public function testOverrideEnqueuOptions()
+    public function testOverrideEnqueueOptions()
     {
         $testJob = new JobWithOptions();
         $this->assertEquals(
-            array('priority' => -1, 'maxAttempts' => 1, 'queueName' => 'test'),
-            $testJob->enqueueOptions()
+            array(
+                'priority'          => -1,
+                'maxAttempts'       => 1,
+                'queueName'         => 'test',
+                'maxRuntimeSeconds' => 25,
+            ),
+            $testJob->getEnqueueOptions()
+        );
+    }
+
+    public function testInjectingOneEnqueueOption()
+    {
+        $testJob = new JQTestJob();
+        $testJob->setEnqueueOption('maxAttempts', 7);
+        $this->assertEquals(
+            array(
+                'priority' => 0,
+                'maxAttempts' => 7,
+                'queueName' => 'test',
+            ),
+            $testJob->getEnqueueOptions()
+        );
+        
+        $testJob->setEnqueueOption('maxRuntimeSeconds', 20);
+        $this->assertEquals(
+            array(
+                'priority'          => 0,
+                'maxAttempts'       => 7,
+                'queueName'         => 'test',
+                'maxRuntimeSeconds' => 20,
+            ),
+            $testJob->getEnqueueOptions()
+        );
+    }
+
+    public function testInjectingManyEnqueueOptions()
+    {
+        $testJob = new JQTestJob();
+        $testJob->setEnqueueOptions(array('maxRuntimeSeconds' => 9, 'priority' => 5));
+        $this->assertEquals(
+            array(
+                'priority'          => 5,
+                'maxAttempts'       => 1,
+                'queueName'         => 'test',
+                'maxRuntimeSeconds' => 9,
+            ),
+            $testJob->getEnqueueOptions()
+        );
+    }
+
+    public function testInjectingEnqueueOptionsAtConstruction()
+    {
+        $testJob = new JQTestJob();
+        $testJob->setEnqueueOptions(array('maxRuntimeSeconds' => 7, 'priority' => 3));
+        $this->assertEquals(
+            array(
+                'priority'          => 3,
+                'maxAttempts'       => 1,
+                'queueName'         => 'test',
+                'maxRuntimeSeconds' => 7,
+            ),
+            $testJob->getEnqueueOptions()
         );
     }
 }
