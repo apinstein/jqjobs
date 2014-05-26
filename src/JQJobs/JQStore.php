@@ -18,11 +18,10 @@ interface JQStore
      * Will create a new JQManagedJob to manage the job and add it to the queue.
      *
      * @param object JQJob
-     * @param array Options: priority, maxAttempts
      * @return object JQManagedJob
      * @throws object Exception
      */
-    function enqueue(JQJob $job, $options = array());
+    function enqueue(JQJob $job);
 
     /**
      * Get the next job to runin the queue.

@@ -64,7 +64,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         $this->autoscaler->run();
     }
 
-    public function enqueue(JQJob $job, $options = array())
+    public function enqueue(JQJob $job)
     {
         $mJob = NULL;
  
@@ -93,7 +93,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
             if (!$mJob)
             {
                 // create a new job
-                $mJob = new JQManagedJob($this, $options);
+                $mJob = new JQManagedJob($this);
                 $mJob->setJob($job);
                 $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
                 $mJob->setCoalesceId($job->coalesceId());

@@ -12,12 +12,24 @@
  */
 abstract class JQJob
 {
-    function enqueueOptions()
+    private $enqueueOptions = array(
+        'priority'    => 0,
+        'maxAttempts' => 1,
+    );
+
+    function getEnqueueOptions()
     {
-        return array(
-            'priority'    => 0,
-            'maxAttempts' => 1,
-        );
+        return $this->enqueueOptions;
+    }
+
+    function setEnqueueOption($key, $value)
+    {
+        $this->setEnqueueOptions( array($key => $value) );
+    }
+
+    function setEnqueueOptions($newOptions)
+    {
+        $this->enqueueOptions = array_merge( $this->enqueueOptions, $newOptions );
     }
 
     /**

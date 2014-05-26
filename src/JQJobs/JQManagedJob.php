@@ -95,14 +95,14 @@ final class JQManagedJob extends JQJob
      *
      * @param object JQStore
      * @param array Options for the job:
-     *              startDts:       object DateTime - do not start job before this time, default NULL (asap)
-     *              priority:       int             - priority of the job, default 0
-     *              maxAttempts:    int             - maximum number of attempts allowed for this job, default 1
-     *              queueName:      string          - the queueName to associate this job with
-     *       deleteOnComplete:      boolean         - delete the job when done? default false
-     *      maxRuntimeSeconds:      int             - seconds that the job is allowed to be in STATUS_RUNNING before it's determined to be aborted. default null (no auto-cleanup)
+     *           startDts: DateTime - do not start job before this time, default NULL (asap)
+     *           priority: int      - priority of the job, default 0
+     *        maxAttempts: int      - maximum number of attempts allowed for this job, default 1
+     *          queueName: string   - the queueName to associate this job with
+     *   deleteOnComplete: boolean  - delete the job when done? default false
+     *  maxRuntimeSeconds: int      - seconds that the job is allowed to be in STATUS_RUNNING before it's determined to be aborted. default null (no auto-cleanup)
      */
-    public function __construct($jqStore, $options = array())
+    public function __construct($jqStore)
     {
         $this->jqStore = $jqStore;
         $this->creationDts = new DateTime();
@@ -111,31 +111,6 @@ final class JQManagedJob extends JQJob
         $this->maxAttempts = 1;
         $this->attemptNumber = 0;
         $this->maxRuntimeSeconds = NULL;
-
-        if (isset($options['startDts']))
-        {
-            $this->startDts = $options['startDts'];
-        }
-        if (isset($options['priority']))
-        {
-            $this->priority = $options['priority'];
-        }
-        if (isset($options['maxAttempts']))
-        {
-            $this->maxAttempts = $options['maxAttempts'];
-        }
-        if (isset($options['queueName']))
-        {
-            $this->queueName = $options['queueName'];
-        }
-        if (isset($options['deleteOnComplete']))
-        {
-            $this->deleteOnComplete = $options['deleteOnComplete'];
-        }
-        if (isset($options['maxRuntimeSeconds']))
-        {
-            $this->maxRuntimeSeconds = $options['maxRuntimeSeconds'];
-        }
     }
 
     public function persistableFields()
@@ -257,6 +232,33 @@ final class JQManagedJob extends JQJob
     public function setJob(JQJob $job)
     {
         $this->job = $job;
+
+        $options = $job->getEnqueueOptions();
+
+        if (isset($options['startDts']))
+        {
+            $this->startDts = $options['startDts'];
+        }
+        if (isset($options['priority']))
+        {
+            $this->priority = $options['priority'];
+        }
+        if (isset($options['maxAttempts']))
+        {
+            $this->maxAttempts = $options['maxAttempts'];
+        }
+        if (isset($options['queueName']))
+        {
+            $this->queueName = $options['queueName'];
+        }
+        if (isset($options['deleteOnComplete']))
+        {
+            $this->deleteOnComplete = $options['deleteOnComplete'];
+        }
+        if (isset($options['maxRuntimeSeconds']))
+        {
+            $this->maxRuntimeSeconds = $options['maxRuntimeSeconds'];
+        }
     }
 
     public function setJobId($jobId)

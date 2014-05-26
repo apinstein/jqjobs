@@ -12,7 +12,7 @@ class JQStore_Array implements JQStore
     protected $jobId = 1;
     protected $mutexInUse = false;
 
-    public function enqueue(JQJob $job, $options = array())
+    public function enqueue(JQJob $job)
     {
         if (!is_null($job->coalesceId()))
         {
@@ -23,7 +23,7 @@ class JQStore_Array implements JQStore
             }
         }
 
-        $mJob = new JQManagedJob($this, $options);
+        $mJob = new JQManagedJob($this);
         $mJob->setJob($job);
         $mJob->setCoalesceId($job->coalesceId());
         $mJob->setJobId($this->jobId);
