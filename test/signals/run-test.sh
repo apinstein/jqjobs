@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PHP_COMMAND=${PHP_COMMAND:-php}
+PHP_BIN=${PHP_BIN:-php}
 
 SECONDS_TO_LET_JOB_RUN_BEFORE_TERM=1
 SECONDS_BETWEEN_TERM_AND_KILL=4
@@ -17,7 +17,7 @@ echo ""
 echo "****************************************"
 echo "TEST #1: SUCCESSFUL GRACEFUL SHUTDOWN..."
 echo "****************************************"
-${PHP_COMMAND} ./jq-test-signal-worker.php '{ "jobRunTime": 2, "systemTermToKillWindow": '${JQJOBS_HARD_SHUTDOWN_LIMIT}' }'   &
+${PHP_BIN} ./jq-test-signal-worker.php '{ "jobRunTime": 2, "systemTermToKillWindow": '${JQJOBS_HARD_SHUTDOWN_LIMIT}' }'   &
 workerPID=$!
 sleep ${SECONDS_TO_LET_JOB_RUN_BEFORE_TERM}
 echo "******* SENDING SIGTERM ****************"
@@ -33,7 +33,7 @@ echo ""
 echo "************************************************************"
 echo "TEST #2: KILL SHUTDOWN AFTER UNSUCCESSFUL GRACEFUL PERIOD...";
 echo "************************************************************"
-${PHP_COMMAND} ./jq-test-signal-worker.php '{ "jobRunTime": 10, "systemTermToKillWindow": '${JQJOBS_HARD_SHUTDOWN_LIMIT}' }' &
+${PHP_BIN} ./jq-test-signal-worker.php '{ "jobRunTime": 10, "systemTermToKillWindow": '${JQJOBS_HARD_SHUTDOWN_LIMIT}' }' &
 workerPID=$!
 sleep ${SECONDS_TO_LET_JOB_RUN_BEFORE_TERM}
 echo "****** SENDING SIGTERM: ${SECONDS_BETWEEN_TERM_AND_KILL} seconds until SIGKILL"

@@ -16,6 +16,12 @@ createdb -U postgres jqjobs_test
 # main unit tests
 ./vendor/bin/phpunit
 
+# remaining tests are shell script based and leverage environment vars
+export PSQL_BIN=/usr/bin/psql         # ...or your psql path
+export PG_DUMP_BIN=/usr/bin/pg_dump   # ...or your pg_dump path
+export PHP_BIN=/usr/bin/php           # ...or your php path
+export SEQ_BIN=/usr/bin/seq           # ...or your seq path
+
 # misc integration tests
 cd test/concurrency-test-script && sh concurrency-test.sh
 # you will need to manually run the tests in test/shutdown-error-tests to make sure they behave as indicated
