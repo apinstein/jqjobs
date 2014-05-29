@@ -1,6 +1,8 @@
 <?php
 // vim: set expandtab tabstop=4 shiftwidth=4:
 
+class JQManagedJob_AlreadyHasAJobException extends Exception { }
+
 /**
  * JQManagedJob is the core unit of work for the Job system.
  *
@@ -102,7 +104,7 @@ final class JQManagedJob extends JQJob
      *   deleteOnComplete: boolean  - delete the job when done? default false
      *  maxRuntimeSeconds: int      - seconds that the job is allowed to be in STATUS_RUNNING before it's determined to be aborted. default null (no auto-cleanup)
      */
-    public function __construct($jqStore)
+    public function __construct($jqStore, $jqJob = NULL)
     {
         $this->jqStore = $jqStore;
         $this->creationDts = new DateTime();
@@ -111,6 +113,10 @@ final class JQManagedJob extends JQJob
         $this->maxAttempts = 1;
         $this->attemptNumber = 0;
         $this->maxRuntimeSeconds = NULL;
+        if(isset($jqJob))
+        {
+            $this->setJob($jqJob);
+        }
     }
 
     public function persistableFields()
@@ -231,7 +237,12 @@ final class JQManagedJob extends JQJob
 
     public function setJob(JQJob $job)
     {
+        if ( $this->job !== NULL)
+        {
+            throw new JQManagedJob_AlreadyHasAJobException();
+        }
         $this->job = $job;
+        $this->setCoalesceId($job->coalesceId());
 
         $options = $job->getEnqueueOptions();
 
@@ -482,7 +493,7 @@ final class JQManagedJob extends JQJob
     /**
      * Restart the current job as if it had never been run before.
      *
-     * Unlink retry, this *always* works. This is most useful as a manual override to all built-in retry semantics.
+     * Unlike retry, this *always* works. This is most useful as a manual override to all built-in retry semantics.
      *
      * @see retry
      */
