@@ -47,11 +47,11 @@ class JQStore_PropelTest extends JQStore_AllTest
         $this->assertEquals(0, $q->count('test'));
     }
 
-    private function setup10SampleJobs($queueName = 'test')
+    private function setup10SampleJobs()
     {
         $jobIdsByIndex = array();
         foreach (range(1,10) as $i) {
-            $job = $this->jqStore->enqueue(new QuietSimpleJob($i), array('queueName' => $queueName));
+            $job = $this->jqStore->enqueue(new QuietSimpleJob($i));
             $jobIdsByIndex[] = $job->getJobId();
         }
         return $jobIdsByIndex;

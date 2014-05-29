@@ -31,10 +31,10 @@ function getTestJQStore()
 // A simple no-op job that uses a test queue for other test jobs to override
 class JQTestJob extends JQJob
 {
-    function __construct($queueOptions = array())
+    function __construct($enqueueOptions = array())
     {
         $this->setEnqueueOption( 'queueName', 'test' );
-        $this->setEnqueueOptions( $queueOptions );
+        $this->setEnqueueOptions( $enqueueOptions );
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function cleanup() { }
@@ -43,12 +43,13 @@ class JQTestJob extends JQJob
     function description() { }
 }
 
-class CTestJob extends JQJob
+class CTestJob extends JQTestJob
 {
     protected $job;
-    function __construct($jobid)
+    function __construct($jobid, $enqueueOptions=array())
     {
         $this->job=$jobid;
+        parent::__construct($enqueueOptions);
     }
     function run(JQManagedJob $mJob)
     {

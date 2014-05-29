@@ -199,12 +199,12 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
      */
     function testJobsWithNullCoalesceIdAreNotCoalesced()
     {
-        $qMock = $this->getMock('JQStore_Array', array('existsJobForCoalesceId'));
-        $qMock->expects($this->never())
-                            ->method('existsJobForCoalesceId')
-                            ;
+        $q = new JQStore_Array();
 
-        $qMock->enqueue(new SampleCoalescingJob(NULL));
+        $this->assertEquals(0, $q->count('test'));
+        $q->enqueue(new SampleCoalescingJob(NULL));
+        $q->enqueue(new SampleCoalescingJob(NULL));
+        $this->assertEquals(2, $q->count('test'));
     }
 
     /**
@@ -213,14 +213,12 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     function testJobsWithNonNullCoalesceIdAreCoalesced()
     {
         $coalesceId = 1234;
+        $q = new JQStore_Array();
 
-        $qMock = $this->getMock('JQStore_Array', array('existsJobForCoalesceId'));
-        $qMock->expects($this->once())
-                            ->method('existsJobForCoalesceId')
-                            ->with($coalesceId)
-                            ;
-
-        $qMock->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(0, $q->count('test'));
+        $q->enqueue(new SampleCoalescingJob($coalesceId));
+        $q->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(1, $q->count('test'));
     }
     /**
      * @testdox JQJobs queues a coalescing job normally if there is no existing coalesceId
@@ -229,7 +227,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         $q = new JQStore_Array();
 
-        $q->enqueue(new SampleJob());
+        $q->enqueue(new SampleCoalescingJob(4321));
 
         $this->assertEquals(1, $q->count('test'));
     }
@@ -254,7 +252,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // create a queuestore
         $maxAttempts = 5;
         $q = new JQStore_Array();
-        $jqjob = $q->enqueue(new SampleFailJob($this, array('maxAttempts' => $maxAttempts)));
+        $mJob = $q->enqueue(new SampleFailJob($this, array('maxAttempts' => $maxAttempts)));
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
@@ -262,7 +260,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(0, $q->count('test', 'queued'));
         $this->assertEquals(1, $q->count('test', 'failed'));
-        $this->assertEquals($maxAttempts, $jqjob->getAttemptNumber());
+        $this->assertEquals($maxAttempts, $mJob->getAttemptNumber());
     }
 
     /**
@@ -277,8 +275,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // set up initial condiitions
         $testJob = new JQTestJob(array('maxAttempts' => $maxAttempts));
-        $mJob = new JQManagedJob($q);
-        $mJob->setJob($testJob);
+        $mJob = new JQManagedJob($q, $testJob);
         JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
         $mJob->setAttemptNumber($previousAttempts);
         $mJob->markJobStarted();
@@ -415,9 +412,8 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         // setup
         $q = new JQStore_Array();
-        $mJob = new JQManagedJob($q);
+        $mJob = new JQManagedJob($q, new SampleCallbackJob($errorGeneratorF));
         $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
-        $mJob->setJob(new SampleCallbackJob($errorGeneratorF));
         $mJob->markJobStarted();
 
         // run
