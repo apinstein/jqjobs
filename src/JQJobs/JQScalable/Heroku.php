@@ -27,11 +27,18 @@ class JQScalable_Heroku implements JQScalable
 
     function countCurrentWorkersForQueue($queue)
     {
-        $ps = $this->herokuClient->ps($this->appName);
         $workerCount = 0;
-        foreach ($ps as $psEntry) {
-            list($type, $num) = explode('.', $psEntry['process']);
-            if ($type === $queue) $workerCount++;
+        try {
+            $ps = $this->herokuClient->ps($this->appName);
+            foreach ($ps as $psEntry) {
+                list($type, $num) = explode('.', $psEntry['process']);
+                if ($type === $queue) $workerCount++;
+            }
+        }
+        catch(HerokuClient500Exception $hc500)
+        {
+            print "The Heroku API seems to be down, while counting workers, received:";
+            print $hc500->getMessage();
         }
 
         return $workerCount;
@@ -39,9 +46,19 @@ class JQScalable_Heroku implements JQScalable
 
     function setCurrentWorkersForQueue($numWorkers, $queue)
     {
-        $this->herokuClient->psScale($this->appName, $queue, $numWorkers);
+        try {
+            $this->herokuClient->psScale($this->appName, $queue, $numWorkers);
+        }
+        catch(HerokuClient500Exception $hc500)
+        {
+            print "The Heroku API seems to be down, while scaling workers, received:";
+            print $hc500->getMessage();
+        }
     }
 }
+
+class HerokuClient400Exception extends Exception {}
+class HerokuClient500Exception extends Exception {}
 
 class HerokuClient
 {
@@ -70,7 +87,8 @@ class HerokuClient
 
     // Handle errors
     if ($error) throw new Exception("Error running curl: {$error}.");
-    if ($httpCode >= 400) throw new Exception("HTTP error: {$httpCode}.");
+    if ($httpCode >= 500) throw new HerokuClient500Exception("HTTP {$httpCode}: {$output}");
+    if ($httpCode >= 400) throw new HerokuClient400Exception("HTTP {$httpCode}: {$output}");
 
     // Otherwise we're good!
     return json_decode($output, true);
@@ -99,7 +117,8 @@ class HerokuClient
 
     // Handle errors
     if ($error) throw new Exception("Error running curl: {$error}.");
-    if ($httpCode >= 400) throw new Exception("HTTP error: {$httpCode}. {$output}");
+    if ($httpCode >= 500) throw new HerokuClient500Exception("HTTP {$httpCode}: {$output}");
+    if ($httpCode >= 400) throw new HerokuClient400Exception("HTTP {$httpCode}: {$output}");
 
     // Otherwise we're good!
     return true;
