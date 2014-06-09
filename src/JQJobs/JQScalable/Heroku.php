@@ -2,9 +2,6 @@
 
 class JQScalable_Heroku implements JQScalable
 {
-    protected $apiKey;
-    protected $appName;
-
     protected $herokuClient;
 
     public function __construct($herokuClient)
