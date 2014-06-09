@@ -7,12 +7,9 @@ class JQScalable_Heroku implements JQScalable
 
     protected $herokuClient;
 
-    public function __construct($apiKey, $appName)
+    public function __construct($herokuClient)
     {
-        $this->appName = $appName;
-        $this->apiKey  = $apiKey;
-
-        $this->herokuClient = new HerokuClient($this->apiKey);
+        $this->herokuClient = $herokuClient;
     }
 
     /**
@@ -29,7 +26,7 @@ class JQScalable_Heroku implements JQScalable
     {
         $workerCount = 0;
         try {
-            $ps = $this->herokuClient->ps($this->appName);
+            $ps = $this->herokuClient->ps();
             foreach ($ps as $psEntry) {
                 list($type, $num) = explode('.', $psEntry['process']);
                 if ($type === $queue) $workerCount++;
@@ -37,8 +34,9 @@ class JQScalable_Heroku implements JQScalable
         }
         catch(HerokuClient500Exception $hc500)
         {
-            print "The Heroku API seems to be down, while counting workers, received:";
-            print $hc500->getMessage();
+            // @todo: How do I log this stuff?
+            // print "The Heroku API seems to be down, while counting workers, received:\n";
+            // print $hc500->getMessage();
         }
 
         return $workerCount;
@@ -47,12 +45,13 @@ class JQScalable_Heroku implements JQScalable
     function setCurrentWorkersForQueue($numWorkers, $queue)
     {
         try {
-            $this->herokuClient->psScale($this->appName, $queue, $numWorkers);
+            $this->herokuClient->psScale($queue, $numWorkers);
         }
         catch(HerokuClient500Exception $hc500)
         {
-            print "The Heroku API seems to be down, while scaling workers, received:";
-            print $hc500->getMessage();
+            // @todo: How do I log this stuff?
+            // print "The Heroku API seems to be down, while scaling workers, received:\n";
+            // print $hc500->getMessage();
         }
     }
 }
@@ -64,17 +63,18 @@ class HerokuClient
 {
 
   private $_apiKey = NULL;
+  private $_appName = NULL;
 
-  public function __construct($apiKey)
+  public function __construct($apiKey, $appName)
   {
     if (!$apiKey) throw new Exception("Expected an api key.");
     $this->_apiKey = $apiKey;
+    if (!$appName) throw new Exception("Expected an app name.");
+    $this->_appName = $appName;
   }
 
-  public function ps($app)
+  public function ps()
   {
-    if (!$app) throw new Exception("Expected an app.");
-
     // Hit the heroku json api
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$app}/ps");
@@ -94,9 +94,8 @@ class HerokuClient
     return json_decode($output, true);
   }
 
-  public function psScale($app, $type, $quantity)
+  public function psScale($type, $quantity)
   {
-    if (!$app) throw new Exception("Expected an app.");
     if (!$type) throw new Exception("Expected a process type.");
     if (!is_int($quantity)) throw new Exception("Expected a quantity: " . var_export($quantity, true));
 
