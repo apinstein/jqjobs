@@ -74,7 +74,7 @@ class HerokuClient
   {
     // Hit the heroku json api
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$app}/ps");
+    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$this->_appName}/ps");
     curl_setopt($ch, CURLOPT_USERPWD, ":{$this->_apiKey}");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $output   = curl_exec($ch);
@@ -98,7 +98,7 @@ class HerokuClient
 
     // Hit the heroku json api
     $ch = curl_init( );
-    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$app}/ps/scale");
+    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$this->_appName}/ps/scale");
     curl_setopt($ch, CURLOPT_USERPWD, ":{$this->_apiKey}");
     $data = array(
         'type' => $type,
@@ -120,9 +120,8 @@ class HerokuClient
     return true;
   }
 
-  public function psRestart($app, $ps)
+  public function psRestart($ps)
   {
-    if (!$app) throw new Exception("Expected an app.");
     if (!$ps) throw new Exception("Expected a process id or type.");
 
     if (strpos('.', $ps))
@@ -136,7 +135,7 @@ class HerokuClient
 
     // Hit the heroku json api
     $ch = curl_init( );
-    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$app}/ps/restart");
+    curl_setopt($ch, CURLOPT_URL, "https://api.heroku.com/apps/{$this->_appName}/ps/restart");
     curl_setopt($ch, CURLOPT_USERPWD, ":{$this->_apiKey}");
     $data = array(
         $restartBy => $ps
