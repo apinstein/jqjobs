@@ -73,9 +73,10 @@ class JQAutoscaler
     protected $scalingHistory = array();
     private function performAutoscaleChange($queueName, $from, $to)
     {
-        if (!isset($this->scalingHistory[$queueName]))
+        $queueScalingHistory = $this->scalingHistory[$queueName];
+        if (!isset($queueScalingHistory))
         {
-            $this->scalingHistory[$queueName] = array(
+            $queueScalingHistory = array(
                 'lastScaleDts'   => 0,
                 'lastScale'      => $from,
                 'lastScaleDelta' => $to,
@@ -93,8 +94,8 @@ class JQAutoscaler
         else if ($to > $from)
         {
             if (
-                $this->scalingHistory[$queueName]['lastScaleDelta'] < 0                                                         // last scale was DOWN
-                AND (time() - $this->scalingHistory[$queueName]['lastScaleDts']) < $this->minSecondsToProcessDownScale          // AND hasn't had a chance to "finalize"
+                $queueScalingHistory['lastScaleDelta'] < 0                                                         // last scale was DOWN
+                AND (time() - $queueScalingHistory['lastScaleDts']) < $this->minSecondsToProcessDownScale          // AND hasn't had a chance to "finalize"
                )
             {
                 $okToScale = false;
@@ -110,8 +111,8 @@ class JQAutoscaler
         else if ($to < $from)
         {
             if (
-                $this->scalingHistory[$queueName]['lastScaleDelta'] < 0                                                         // last scale was DOWN
-                AND (time() - $this->scalingHistory[$queueName]['lastScaleDts']) < $this->minSecondsToProcessDownScale          // AND hasn't had a chance to "finalize"
+                $queueScalingHistory['lastScaleDelta'] < 0                                                         // last scale was DOWN
+                AND (time() - $queueScalingHistory['lastScaleDts']) < $this->minSecondsToProcessDownScale          // AND hasn't had a chance to "finalize"
                )
             {
                 $okToScale = false;
@@ -129,9 +130,9 @@ class JQAutoscaler
         if (!$okToScale) return;
 
         $this->scalable->setCurrentWorkersForQueue($to, $queueName);
-        $this->scalingHistory[$queueName]['lastScaleDts'] = time();
-        $this->scalingHistory[$queueName]['lastScale'] = $to;
-        $this->scalingHistory[$queueName]['lastScaleDelta'] = $to - $from;
+        $queueScalingHistory['lastScaleDts'] = time();
+        $queueScalingHistory['lastScale'] = $to;
+        $queueScalingHistory['lastScaleDelta'] = $to - $from;
     }
 
     protected function detectHungJobs()

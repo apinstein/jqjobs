@@ -12,7 +12,7 @@ class HerokuTest extends PHPUnit_Framework_TestCase
                      ->getMock();
         
         // Raise on ps
-        $mock->expects($this->any())
+        $mock->expects($this->once())
              ->method('ps')
              ->will($this->throwException(new HerokuClient500Exception("Mock outage.")));
 
@@ -28,7 +28,7 @@ class HerokuTest extends PHPUnit_Framework_TestCase
                      ->getMock();
         
         // Raise on psScale
-        $mock->expects($this->any())
+        $mock->expects($this->once())
              ->method('psScale')
              ->will($this->throwException(new HerokuClient500Exception("Mock outage.")));
 
