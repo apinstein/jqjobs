@@ -230,6 +230,8 @@ class JQWorker
     private function getMemoryLimitInBytes()
     {
         $val = trim(ini_get('memory_limit'));
+        if ($val == -1) { $val = '512M'; }
+
         $last = strtolower($val[strlen($val)-1]);
         switch($last) {
             case 'g':
