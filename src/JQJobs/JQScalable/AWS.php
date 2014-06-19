@@ -34,9 +34,11 @@ class JQScalable_AWS implements JQScalable
     {
         // Ask the appropriate autoscaling group
         // to describe the running instances.
-        $response = $this->autoScalingClient->describeAutoScalingInstances();
+        $response = $this->autoScalingClient->describeAutoScalingGroups(array(
+            'AutoScalingGroupNames' => array($this->autoScalingGroupName)
+        ));
         // Count them
-        $numberOfInstances = count($response["AutoScalingInstances"]);
+        $numberOfInstances = count($response["AutoScalingGroups"][0]["Instances"]);
 
         return $numberOfInstances;
     }
