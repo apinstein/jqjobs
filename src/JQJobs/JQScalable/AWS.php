@@ -32,13 +32,15 @@ class JQScalable_AWS implements JQScalable
 
     function countCurrentWorkersForQueue($queueName)
     {
-        return count($this->describeAutoScalingGroup()["Instances"]);
+        $description = $this->describeAutoScalingGroup();
+        return count($description["Instances"]);
     }
 
     function setCurrentWorkersForQueue($numWorkers, $queueName)
     {
         // First ask the AutoScaling Group for its max.
-        $maximumAllowedWorkers = $this->describeAutoScalingGroup()["MaxSize"];
+        $description = $this->describeAutoScalingGroup();
+        $maximumAllowedWorkers = $description["MaxSize"];
         // Truncate to the max so we don't ask for too many.
         $realisticWorkers = min($maximumAllowedWorkers, $numWorkers);
         // Log it if we truncated
