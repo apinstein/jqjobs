@@ -60,7 +60,7 @@ class JQScalable_AWS implements JQScalable
     private function describeAutoScalingGroup()
     {
         // Ask the appropriate autoscaling group to describe itself.
-        $this->autoScalingClient->describeAutoScalingGroups(array(
+        $response = $this->autoScalingClient->describeAutoScalingGroups(array(
             'AutoScalingGroupNames' => array($this->autoScalingGroupName)
         ));
 
