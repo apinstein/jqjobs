@@ -180,13 +180,19 @@ class JQAutoscaler
             $workersPerQueue = array();
 
             foreach ($this->config as $queue => $queueConfig) {
-                $numPendingJobs = $this->countPendingJobs($queue);
-                $numDesiredWorkers = self::calculateScale($queueConfig['scalingAlgorithm'], $numPendingJobs, $queueConfig['maxConcurrency']);
-                $numCurrentWorkers = $this->scalable->countCurrentWorkersForQueue($queue);
-                $this->performAutoscaleChange($queue, $numCurrentWorkers, $numDesiredWorkers);
-                //print "{$queue}: {$numCurrentWorkers} => {$numDesiredWorkers}\n";
-                //$this->scalable->setCurrentWorkersForQueue($numDesiredWorkers, $queue);
-                $workersPerQueue[$queue] = $numDesiredWorkers;
+                try
+                {
+                    $numPendingJobs = $this->countPendingJobs($queue);
+                    $numDesiredWorkers = self::calculateScale($queueConfig['scalingAlgorithm'], $numPendingJobs, $queueConfig['maxConcurrency']);
+                    $numCurrentWorkers = $this->scalable->countCurrentWorkersForQueue($queue);
+                    $this->performAutoscaleChange($queue, $numCurrentWorkers, $numDesiredWorkers);
+                    $workersPerQueue[$queue] = $numDesiredWorkers;
+                }
+                catch(Exception $e)
+                {
+                    print "Error trying to scale the '{$queue}' queue:";
+                    print $e->getMessage();
+                }
             }
             print "\n";
 
