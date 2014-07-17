@@ -190,7 +190,7 @@ class JQAutoscaler
                 }
                 catch(Exception $e)
                 {
-                    print "Error trying to scale the '{$queue}' queue:";
+                    print "Error trying to scale the '{$queue}' queue: ";
                     print $e->getMessage();
                 }
             }

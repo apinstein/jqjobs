@@ -32,28 +32,45 @@ class JQScalable_AWS implements JQScalable
 
     function countCurrentWorkersForQueue($queueName)
     {
-        // Ask the appropriate autoscaling group
-        // to describe the running instances.
-        $response = $this->autoScalingClient->describeAutoScalingGroups(array(
-            'AutoScalingGroupNames' => array($this->autoScalingGroupName)
-        ));
-        // Count them
-        $numberOfInstances = count($response["AutoScalingGroups"][0]["Instances"]);
-
-        return $numberOfInstances;
+        return count($this->describeAutoScalingGroup()["Instances"]);
     }
 
     function setCurrentWorkersForQueue($numWorkers, $queueName)
     {
-        // If we need more workers, tell EC2
-        if ($numWorkers > $this->countCurrentWorkersForQueue($queueName))
+        // First ask the AutoScaling Group for its max.
+        $maximumAllowedWorkers = $this->describeAutoScalingGroup()["MaxSize"];
+        // Truncate to the max so we don't ask for too many.
+        $realisticWorkers = min($maximumAllowedWorkers, $numWorkers);
+        // Log it if we truncated
+        if ($realisticWorkers < $numWorkers)
         {
-            $options = array(
-                'AutoScalingGroupName' => $this->autoScalingGroupName,
-                'DesiredCapacity' => $numWorkers,
-            );
-            $response = $this->autoScalingClient->setDesiredCapacity($options);   
+            print "Needed more than max allowed workers, truncating to {$realisticWorkers}";
+        }
+
+        // If we need more workers, tell EC2
+        if ($realisticWorkers > $this->countCurrentWorkersForQueue($queueName))
+        {
+            $this->setDesiredCapacity($realisticWorkers);
         }
         // If we need less workers, do nothing
+    }
+
+    private function describeAutoScalingGroup()
+    {
+        // Ask the appropriate autoscaling group to describe itself.
+        $this->autoScalingClient->describeAutoScalingGroups(array(
+            'AutoScalingGroupNames' => array($this->autoScalingGroupName)
+        ));
+
+        // Return the first (and only) one.
+        return $response["AutoScalingGroups"][0];
+    }
+
+    private function setDesiredCapacity($capacity)
+    {
+        $this->autoScalingClient->setDesiredCapacity(array(
+            'AutoScalingGroupName' => $this->autoScalingGroupName,
+            'DesiredCapacity'      => $capacity,
+        ));
     }
 }
