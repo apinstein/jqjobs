@@ -124,7 +124,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleFailJob($this));
+            $q->enqueue(new SampleFailJob());
         }
 
         // Start a worker to run the jobs.
@@ -141,7 +141,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         // create a queuestore
         $q = new JQStore_Array();
-        $q->enqueue(new SampleFailJob($this));
+        $q->enqueue(new SampleFailJob());
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
@@ -252,7 +252,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // create a queuestore
         $maxAttempts = 5;
         $q = new JQStore_Array();
-        $mJob = $q->enqueue(new SampleFailJob($this, array('maxAttempts' => $maxAttempts)));
+        $mJob = $q->enqueue(new SampleFailJob(array('maxAttempts' => $maxAttempts)));
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));

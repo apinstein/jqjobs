@@ -149,7 +149,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         $q->abort();
         $this->assertEquals(0, $q->count('test'), "Test database not empty; you should re-initialize the test db.");
 
-        $mJob = $q->enqueue(new SampleFailJob($i));
+        $mJob = $q->enqueue(new SampleFailJob());
 
         // mark job as running in DB to simulate a job that's running when interrupted
         $mJob->markJobStarted();    // will save to DB

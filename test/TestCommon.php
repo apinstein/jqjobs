@@ -110,10 +110,9 @@ class SampleCoalescingJob extends SampleJob
 
 class SampleFailJob extends JQTestJob
 {
-    function __construct($info, $enqueueOptions = array())
+    function __construct($enqueueOptions = array())
     {
         parent::__construct($enqueueOptions);
-        $this->info = $info;
     }
     function run(JQManagedJob $mJob)
     {
