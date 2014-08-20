@@ -43,23 +43,20 @@ class JQTestJob extends JQJob
     function description() { }
 }
 
-class CTestJob extends JQTestJob
+class ConcurrencyTestJob extends JQTestJob
 {
-    protected $job;
-    function __construct($jobid, $enqueueOptions=array())
+    protected $jobId;
+    function __construct($jobid)
     {
-        $this->job=$jobid;
-        parent::__construct($enqueueOptions);
+        $this->jobId = $jobid;
+        parent::__construct( array('queueName' => 'concurrency-test') );
     }
     function run(JQManagedJob $mJob)
     {
-        print "running job {$this->job}";
+        print "running job {$this->jobId}";
         return JQManagedJob::STATUS_COMPLETED;
     }
-    function cleanup() {}
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
-    function description() { return "job {$this->job}"; }
-    function coalesceId() { return NULL; }
+    function description() { return "job {$this->jobId}"; }
 }
 
 class QuietSimpleJob extends JQTestJob

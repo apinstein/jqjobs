@@ -29,7 +29,7 @@ class JQJobTest extends PHPUnit_Framework_TestCase
             ),
             $testJob->getEnqueueOptions()
         );
-        
+
         $testJob->setEnqueueOption('maxRuntimeSeconds', 20);
         $this->assertEquals(
             array(

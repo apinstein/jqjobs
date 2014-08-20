@@ -131,7 +131,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         }
         else
         {
-            // @todo is this lock really necessary? if the contract of JQJobs is that it guarantees jobs run at least once, then 
+            // @todo is this lock really necessary? if the contract of JQJobs is that it guarantees jobs run at least once, then
             // is it even necessary to ever lock for this? the risk is only that the existing job would be dequeued while a coalesce was pending.
             // worst case seems that we should be using a select ... for update here? certainly that would minimize the surface are of the mutex for performance reasons.
             //
@@ -145,7 +145,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
             $this->con->query($lockSql);
 
             return $this->getByCoalesceId($coalesceId);
-        }   
+        }
     }
 
     public function next($queueName = NULL)
