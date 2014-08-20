@@ -6,7 +6,9 @@
  * Works with JQScalable allow scaling up of arbitrary cloud infrastructure to handle JQJobs load.
  *
  * Usage:
- * - For JQStore_Propel, just pass in autoscalingConfig and that's it!
+ * - if you want your app to auto-scale, be sure to start a process in your app stack:
+ *
+ * MyApp::getJQStore()->runAutoscaler();
  *
  * Dev:
  * - Whenever you change the status of a job, do so in a JQAutoscaler->wrapThingAffectingQueuedJobCount() wrapper.
@@ -24,10 +26,10 @@ class JQAutoscaler
     protected $minSecondsToProcessDownScale = 5;   // app config; do we want to throttle downscaling for any reason?
     // @todo should this be moved to per-queue? probably yes
     protected $scaleDownMinJump = 20;
-    protected $exitIfNoJobs = false;
 
     protected $lastDetectHungJobsAt;
     protected $detectHungJobsInterval;
+    protected $scalerPollingInterval = 5;
 
     public function __construct($jqStore, $scalable, $config)
     {
@@ -52,22 +54,6 @@ class JQAutoscaler
             $numPendingJobs += $this->jqStore->count($queueName, JQManagedJob::STATUS_RUNNING);
         }
         return $numPendingJobs;
-    }
-
-    /**
-     * Any work that could increase the number of queued jobs should be called thru here so that the autoscaler process can be kicked off whenever there is work to do
-     *
-     * @param callable A function that does the work which might affect the number of queued jobs.
-     */
-    public function wrapThingAffectingQueuedJobCount($f)
-    {
-        $countBefore = $this->countPendingJobs();
-        $f();
-        if ($countBefore === 0 || rand(0, 50) == 0)
-        {
-            #print "Turning on autoscaler worker...\n";
-            $this->scalable->setCurrentWorkersForQueue(1, JQScalable::WORKER_AUTOSCALER);
-        }
     }
 
     protected $scalingHistory = array();
@@ -175,7 +161,6 @@ class JQAutoscaler
 
     public function run()
     {
-        $isHibernating = false;
         while (true) {
             $workersPerQueue = array();
 
@@ -196,35 +181,10 @@ class JQAutoscaler
             }
             print "\n";
 
-            if (array_sum($workersPerQueue) === 0)
-            {
-                if (!$isHibernating)
-                {
-                    // @todo -- seems like this is not necessary; isn't it accomplished by the performAutoscaleChange() above?
-                    // maybe doing these 2 calls so close is what's causing our oddly unclean exits
-                    foreach ($this->config as $queue => $queueConfig) {
-                        $this->scalable->setCurrentWorkersForQueue(0, $queue);
-                    }
+            // @todo think about whether it's appropriate for this to run at same frequency as scalerPollingInterval or if we want to have a separate frequency for it.
+            $this->detectHungJobs();
 
-                    if ($this->exitIfNoJobs)
-                    {
-                        $this->scalable->setCurrentWorkersForQueue(0, JQScalable::WORKER_AUTOSCALER);
-                        break;
-                    }
-
-                    print "Entering hibernation....\n";
-                    $isHibernating = true;
-                }
-            }
-            else
-            {
-                if ($isHibernating) print "Exiting hibernation..,\n";
-                $isHibernating = false;
-
-                $this->detectHungJobs();
-            }
-
-            JQWorker::sleep(15);
+            JQWorker::sleep($this->scalerPollingInterval);
         }
         print "Autoscaler exiting.\n";
     }
