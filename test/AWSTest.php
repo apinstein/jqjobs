@@ -6,10 +6,8 @@ class AWSTest extends PHPUnit_Framework_TestCase
 {
     function testThrowHelpfulExceptionWhenAwsSdkNotLoaded()
     {
-        $this->setExpectedException(
-          'Exception', "Please install the AWS SDK in order to use the AWS autoscaling functionality of JQJobs."
-        );
+        $this->setExpectedException('AWSClientException');
 
-        new JQScalable_AWS('us-east-1', 'Nuchamp');
+        new AWSClient('us-east-1', 'Nuchamp');
     }
 }
