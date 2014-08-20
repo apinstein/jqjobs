@@ -69,4 +69,5 @@ require_once dirname(__FILE__) . '/JQScalable.php';
 require_once dirname(__FILE__) . '/JQScalable/Noop.php';
 require_once dirname(__FILE__) . '/JQScalable/Heroku.php';
 require_once dirname(__FILE__) . '/JQScalable/AWS.php';
+require_once dirname(__FILE__) . '/JQScalable/ChimeraScaler.php';
 
