@@ -10,27 +10,14 @@
  *
  * IMPORTANT: Objects implementing JQJob will be serialized into the JQManagedJob during persistence, so it's important that they can be safely serialized.
  */
-abstract class JQJob
+interface JQJob
 {
-    private $enqueueOptions = array(
-        'priority'    => 0,
-        'maxAttempts' => 1,
-    );
-
-    function getEnqueueOptions()
-    {
-        return $this->enqueueOptions;
-    }
-
-    function setEnqueueOption($key, $value)
-    {
-        $this->setEnqueueOptions( array($key => $value) );
-    }
-
-    function setEnqueueOptions($newOptions)
-    {
-        $this->enqueueOptions = array_merge( $this->enqueueOptions, $newOptions );
-    }
+    /**
+     * Fetch this job's settings
+     *
+     * @return array A list of options about how to run this job.
+     */
+    function getEnqueueOptions();
 
     /**
      * Run the job.
@@ -38,14 +25,14 @@ abstract class JQJob
      * @return string One of JQManagedJob::STATUS_WAIT_ASYNC or JQManagedJob::STATUS_COMPLETED. Throw an exception to indicate an error.
      * @throws object Exception Throw an exception if there is a problem.
      */
-    abstract function run(JQManagedJob $mJob);
+    function run(JQManagedJob $mJob);
 
     /**
      * Cleanup any resources held by the job.
      *
      * This gives jobs a chance to delete any resources they may be using before the JQManagedJob is removed.
      */
-    abstract function cleanup();
+    function cleanup();
 
     /**
      * Jobs can use this delegate method to report failures, or archive, them, or whatver they want.
@@ -57,7 +44,7 @@ abstract class JQJob
      * @param string The message accompanying the status change.
      * @see JQStore::statusDidChange()
      */
-    abstract function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
+    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
 
     /**
      * A description for the job.
@@ -66,7 +53,7 @@ abstract class JQJob
      *
      * @return string
      */
-    abstract function description();
+    function description();
 
     /**
      * A unique ID for the job.
@@ -81,5 +68,5 @@ abstract class JQJob
      *
      * @return string
      */
-    abstract function coalesceId();
+    function coalesceId();
 }

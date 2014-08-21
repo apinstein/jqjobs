@@ -26,7 +26,7 @@
  * 
  * @package JQJobs
  */
-class JQDelayedJob extends JQJob
+class JQDelayedJob implements JQJob
 {
     protected $callbackF;
     protected $callbackArgs;
@@ -95,4 +95,5 @@ class JQDelayedJob extends JQJob
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Delayed job"; }
     function coalesceId() { return NULL; }
+    function getEnqueueOptions() { return array(); }
 }

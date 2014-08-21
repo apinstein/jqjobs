@@ -9,7 +9,7 @@ class JQManagedJob_AlreadyHasAJobException extends Exception { }
  * Each job enqueued is wrapped in a JQManagedJob and persisted to a JQStore. The JQManagedJob contains
  * various metadata to track the job through the process of being performed.
  */
-final class JQManagedJob extends JQJob
+final class JQManagedJob
 {
     const STATUS_UNQUEUED       = 'unqueued';
     const STATUS_QUEUED         = 'queued';

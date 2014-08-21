@@ -29,13 +29,31 @@ function getTestJQStore()
 /************** TEST JOBS ****************/
 
 // A simple no-op job that uses a test queue for other test jobs to override
-class JQTestJob extends JQJob
+class JQTestJob implements JQJob
 {
+    private $enqueueOptions = array(
+        'priority'    => 0,
+        'maxAttempts' => 1,
+        'queueName'   => 'test',
+    );
+
     function __construct($enqueueOptions = array())
     {
-        $this->setEnqueueOption( 'queueName', 'test' );
         $this->setEnqueueOptions( $enqueueOptions );
     }
+
+    function getEnqueueOptions() { return $this->enqueueOptions; }
+
+    function setEnqueueOption($key, $value)
+    {
+        $this->setEnqueueOptions( array($key => $value) );
+    }
+
+    function setEnqueueOptions($newOptions)
+    {
+        $this->enqueueOptions = array_merge( $this->enqueueOptions, $newOptions );
+    }
+
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function cleanup() { }
     function coalesceId() { }
@@ -68,10 +86,7 @@ class QuietSimpleJob extends JQTestJob
         $this->job=$jobid;
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
-    function cleanup() {}
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "job {$this->job}"; }
-    function coalesceId() { return NULL; }
 }
 
 class SampleJobCounter
@@ -88,9 +103,6 @@ class SampleJob extends JQTestJob
         SampleJobCounter::increment();
         return JQManagedJob::STATUS_COMPLETED;
     }
-    function coalesceId() { return NULL; }
-    function cleanup() { }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Sample job"; }
 }
 
@@ -103,8 +115,6 @@ class SampleCoalescingJob extends SampleJob
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
     function coalesceId() { return $this->id; }
-    function cleanup() { }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Coalescing job {$this->id}"; }
 }
 
@@ -119,17 +129,12 @@ class SampleFailJob extends JQTestJob
         trigger_error("something went boom", E_USER_ERROR);
         return JQManagedJob::STATUS_FAILED;
     }
-    function cleanup() { }
-    function coalesceId() { return NULL; }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Sample FAIL job"; }
 }
 
 class SampleLoggingJob extends JQTestJob
 {
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_COMPLETED; }
-    function cleanup() { }
-    function coalesceId() { return NULL; }
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message)
     {
         print "Status change: {$oldStatus} => {$mJob->getStatus()}\n";
@@ -137,13 +142,10 @@ class SampleLoggingJob extends JQTestJob
     function description() { return "Sample logging job"; }
 }
 
-class SampleCallbackJob extends JQJob
+class SampleCallbackJob extends JQTestJob
 {
     function __construct($callback) { $this->callback = $callback; }
     function run(JQManagedJob $mJob) { return call_user_func($this->callback); }
-    function cleanup() { }
-    function coalesceId() { return NULL; }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Sample callback job"; }
 }
 
@@ -155,9 +157,6 @@ class SampleAsyncJob extends JQTestJob
         parent::__construct($enqueueOptions);
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
-    function cleanup() { }
-    function coalesceId() { return NULL; }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Sample async job"; }
 }
 
@@ -170,9 +169,6 @@ class SampleExceptionalUnserializerJob extends JQTestJob
         parent::__construct();
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
-    function cleanup() { }
-    function coalesceId() { return NULL; }
-    function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "I throw an exception when unserialized."; }
     function __wakeup() { throw new Exception("__wakeup failed"); }
 }
