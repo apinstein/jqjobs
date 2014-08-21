@@ -82,7 +82,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
                 $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
                 $dbJob = new $this->propelClassName;
                 $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
-                $this->saveDBJob($dbJob, $this->con);
+                $dbJob->save($this->con);
  
                 $mJob->setJobId($dbJob->getJobId());
             }
@@ -301,27 +301,7 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
     {
         $dbJob = $this->getDbJob($mJob->getJobId());
         $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
-        $this->saveDBJob($dbJob, $this->con);
-    }
-
-    /**
-     * Should be used to call the Propel save() function *always* so that we can integrate with autoscaler correctly.
-     */
-    private function saveDBJob($dbJob, $con)
-    {
-        $saverF = function() use ($dbJob, $con) {
-            $dbJob->save($con);
-        };
-
-        // @todo $dbJob->getStatus() should use Propel map functions to use $this->options['jobStatusColName']
-        if ($this->autoscaler && $dbJob->getStatus() === JQManagedJob::STATUS_QUEUED)
-        {
-            $this->autoscaler->wrapThingAffectingQueuedJobCount($saverF);
-        }
-        else
-        {
-            $saverF();
-        }
+        $dbJob->save($this->con);
     }
 
     public function delete(JQManagedJob $mJob)
