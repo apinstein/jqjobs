@@ -44,6 +44,47 @@ class JQAutoscaler
         $this->minSecondsToProcessDownScale = max($this->minSecondsToProcessDownScale, $this->scalable->minSecondsToProcessDownScale());
     }
 
+    public function run()
+    {
+        while (true) {
+            $this->scaleAllQueues();
+            // @todo does detectHungJobs() need a different frequency?
+            $this->detectHungJobs();
+
+            JQWorker::sleep($this->scalerPollingInterval);
+        }
+        print "Autoscaler exiting.\n";
+    }
+
+    public function scaleAllQueues()
+    {
+        foreach ($this->config as $queue => $queueConfig) {
+            try
+            {
+                $numPendingJobs = $this->countPendingJobs($queue);
+                $numDesiredWorkers = self::calculateScale($queueConfig['scalingAlgorithm'], $numPendingJobs, $queueConfig['maxConcurrency']);
+                $numCurrentWorkers = $this->scalable->countCurrentWorkersForQueue($queue);
+                $this->performAutoscaleChange($queue, $numCurrentWorkers, $numDesiredWorkers);
+            }
+            catch(Exception $e)
+            {
+                print "Error trying to scale the '{$queue}' queue: ";
+                print $e->getMessage();
+            }
+        }
+        print "\n";
+    }
+
+    protected function detectHungJobs()
+    {
+        if (time() - $this->lastDetectHungJobsAt <= $this->detectHungJobsInterval) return;
+
+        print "JQAutoscaler::detectHungJobs() running...";
+        $this->jqStore->detectHungJobs();
+        $this->lastDetectHungJobsAt = time();
+        print " done!\n";
+    }
+
     public function countPendingJobs($onlyThisQueue = NULL)
     {
         $numPendingJobs = 0;
@@ -121,16 +162,6 @@ class JQAutoscaler
         $queueScalingHistory['lastScaleDelta'] = $to - $from;
     }
 
-    protected function detectHungJobs()
-    {
-        if (time() - $this->lastDetectHungJobsAt <= $this->detectHungJobsInterval) return;
-
-        print "JQAutoscaler::detectHungJobs() running...";
-        $this->jqStore->detectHungJobs();
-        $this->lastDetectHungJobsAt = time();
-        print " done!\n";
-    }
-
     public static function calculateScale($scalingAlgorithm, $numPendingJobs, $maxConcurrency)
     {
         switch ($scalingAlgorithm) {
@@ -157,35 +188,5 @@ class JQAutoscaler
         }
 
         return $numDesiredWorkers;
-    }
-
-    public function run()
-    {
-        while (true) {
-            $workersPerQueue = array();
-
-            foreach ($this->config as $queue => $queueConfig) {
-                try
-                {
-                    $numPendingJobs = $this->countPendingJobs($queue);
-                    $numDesiredWorkers = self::calculateScale($queueConfig['scalingAlgorithm'], $numPendingJobs, $queueConfig['maxConcurrency']);
-                    $numCurrentWorkers = $this->scalable->countCurrentWorkersForQueue($queue);
-                    $this->performAutoscaleChange($queue, $numCurrentWorkers, $numDesiredWorkers);
-                    $workersPerQueue[$queue] = $numDesiredWorkers;
-                }
-                catch(Exception $e)
-                {
-                    print "Error trying to scale the '{$queue}' queue: ";
-                    print $e->getMessage();
-                }
-            }
-            print "\n";
-
-            // @todo think about whether it's appropriate for this to run at same frequency as scalerPollingInterval or if we want to have a separate frequency for it.
-            $this->detectHungJobs();
-
-            JQWorker::sleep($this->scalerPollingInterval);
-        }
-        print "Autoscaler exiting.\n";
     }
 }
