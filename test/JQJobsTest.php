@@ -398,6 +398,9 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         return $testCases;
     }
 
+    /**
+     * @testdox maxRuntimeSeconds defaults to NULL (disabled)
+     */
     function testDefaultMaxRuntimeSecondsIsNull()
     {
         $q = new JQStore_Array();
