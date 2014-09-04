@@ -120,8 +120,6 @@ class JQStore_PropelTest extends JQStore_AllTest
         // ensure that the failed message says something about de-serialization failure?
         $this->assertEquals(JQManagedJob::STATUS_FAILED, $mJob->getStatus(), "Job should be marked as failed.");
         $this->assertEquals("JQManagedJob.job is not a JQJob instance.", $mJob->getErrorMessage(), "Unexpected job error message.");
-<<<<<<< HEAD
-=======
     }
 
     /**
@@ -168,6 +166,5 @@ class JQStore_PropelTest extends JQStore_AllTest
 
         // cleanup
         $q->delete($mJob);
->>>>>>> v1.1-loren
     }
 }

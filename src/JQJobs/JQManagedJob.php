@@ -335,11 +335,6 @@ final class JQManagedJob
         return $this->errorMessage;
     }
 
-    public function getErrorMessage()
-    {
-        return $this->errorMessage;
-    }
-
     public function getQueueName()
     {
         return $this->queueName;
