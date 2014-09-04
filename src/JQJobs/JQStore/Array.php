@@ -12,25 +12,37 @@ class JQStore_Array implements JQStore
     protected $jobId = 1;
     protected $mutexInUse = false;
 
-    public function enqueue(JQJob $job, $options = array())
+    public function enqueue(JQJob $job)
     {
-        if (!is_null($job->coalesceId()))
+        $existingManagedJob = $this->existsJobForCoalesceId($job->coalesceId());
+        if ($existingManagedJob)
         {
-            $existingManagedJob = $this->existsJobForCoalesceId($job->coalesceId());
-            if ($existingManagedJob)
-            {
-                return $existingManagedJob;
-            }
+            return $existingManagedJob;
         }
 
-        $mJob = new JQManagedJob($this, $options);
-        $mJob->setJob($job);
-        $mJob->setCoalesceId($job->coalesceId());
-        $mJob->setJobId($this->jobId);
-        $this->queue[$this->jobId] = $mJob;
+        $mJob = new JQManagedJob($this, $job);
+
+        $jobId = $this->nextJobId();
+        $mJob->setJobId($jobId);
+        $this->queue[$jobId] = $mJob;
         $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
-        $this->jobId++;
+
         return $mJob;
+    }
+
+    private function nextJobId()
+    {
+        return $this->jobId++;
+    }
+
+    function detectHungJobs()
+    {
+        foreach ($this->queue as $mJob) {
+            if ($mJob->isPastMaxRuntimeSeconds())
+            {
+                $mJob->retry(true);
+            }
+        }
     }
 
     public function existsJobForCoalesceId($coalesceId)
@@ -42,7 +54,10 @@ class JQStore_Array implements JQStore
 
         foreach ($this->queue as $mJob) {
             $mJobId = $mJob->coalesceId();
-            if ((string) $mJob->coalesceId() === (string) $coalesceId) return $mJob;
+            if ((string) $mJobId === (string) $coalesceId)
+            {
+                return $mJob;
+            }
         }
 
         return NULL;
@@ -62,13 +77,18 @@ class JQStore_Array implements JQStore
     }
     public function count($queueName = NULL, $status = NULL)
     {
-        $count = 0;
+        $jobs = $this->jobs($queueName, $status);
+        return count($jobs);
+    }
+    public function jobs($queueName = NULL, $status = NULL)
+    {
+        $jobs = array();
         foreach ($this->queue as $dbJob) {
             if ($queueName && $dbJob->getQueueName() !== $queueName) continue;
             if ($status && $dbJob->getStatus() !== $status) continue;
-            $count++;
+            $jobs[] = $dbJob;
         }
-        return $count;
+        return $jobs;
     }
     public function get($jobId)
     {
@@ -104,4 +124,5 @@ class JQStore_Array implements JQStore
     {
         //print "JQStore [Job {$mJob->getJobId()}] {$oldStatus} ==> {$mJob->getStatus()} {$message}\n";
     }
+    public function abort() {}
 }

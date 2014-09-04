@@ -58,8 +58,16 @@ require_once dirname(__FILE__) . '/JQJob.php';
 require_once dirname(__FILE__) . '/JQManagedJob.php';
 
 require_once dirname(__FILE__) . '/JQStore.php';
+require_once dirname(__FILE__) . '/JQStore/Autoscalable.php';
 require_once dirname(__FILE__) . '/JQStore/Array.php';
 require_once dirname(__FILE__) . '/JQStore/Propel.php';
 
 require_once dirname(__FILE__) . '/JQWorker.php';
+
+require_once dirname(__FILE__) . '/JQAutoscaler.php';
+require_once dirname(__FILE__) . '/JQScalable.php';
+require_once dirname(__FILE__) . '/JQScalable/Noop.php';
+require_once dirname(__FILE__) . '/JQScalable/Heroku.php';
+require_once dirname(__FILE__) . '/JQScalable/AWS.php';
+require_once dirname(__FILE__) . '/JQScalable/ChimeraScaler.php';
 

@@ -1,0 +1,9 @@
+<phpunit convertErrorsToExceptions="false"
+    convertNoticesToExceptions="false"
+    convertWarningsToExceptions="false">
+    <testsuites>
+        <testsuite name="All">
+            <directory>test</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

@@ -18,11 +18,10 @@ interface JQStore
      * Will create a new JQManagedJob to manage the job and add it to the queue.
      *
      * @param object JQJob
-     * @param array Options: priority, maxAttempts
      * @return object JQManagedJob
      * @throws object Exception
      */
-    function enqueue(JQJob $job, $options = array());
+    function enqueue(JQJob $job);
 
     /**
      * Get the next job to runin the queue.
@@ -54,8 +53,18 @@ interface JQStore
      *
      * @param string Queue name (NULL = default queue)
      * @param string Status (NULL = any status)
+     * @return int
      */
     function count($queueName = null, $status = NULL);
+
+    /**
+     * Get all jobs in the JQStore matching the given queue/status.
+     *
+     * @param string Queue name (NULL = default queue)
+     * @param string Status (NULL = any status)
+     * @return array An array of JQJobs.
+     */
+    function jobs($queueName = NULL, $status = NULL);
 
     /**
      * Get a JQManagedJob from the JQStore by ID.
@@ -117,6 +126,17 @@ interface JQStore
      * @see JQJob::statusDidChange()
      */
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message);
+
+    /**
+     * This function will be called when a job is interrupted by a signal. The JQStore should abort any un-commited transactions to ensure that the core cleanup algorithm can perform properly.
+     */
+    function abort();
+
+    /**
+     * This function should iterate all running jobs, retrying (with mulligan) any jobs that are isPastMaxRuntimeSeconds()
+     */
+    function detectHungJobs();
 }
 
 class JQStore_JobIsLockedException extends Exception {}
+class JQStore_JobNotFoundException extends Exception {}

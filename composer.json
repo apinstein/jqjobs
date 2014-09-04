@@ -14,5 +14,13 @@
     ],
     "require": {
         "php": ">=5.2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": ">=3.7",
+        "propel/propel1": "=1.6.7",
+        "apinstein/mp": "v1.0.3"
+    },
+    "autoload": {
+        "classmap": ["src/"]
     }
 }

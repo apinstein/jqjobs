@@ -8,10 +8,17 @@
  *
  * The inteface is very simple, consisting only of a run() method to perform the work, and a description() method for reporting/logging purposes.
  *
- * IMPORTANT: Objects implementing JQJob will be serialized into the JQManagedJob during persistence, so it's important that they can be safely seriazlied.
+ * IMPORTANT: Objects implementing JQJob will be serialized into the JQManagedJob during persistence, so it's important that they can be safely serialized.
  */
 interface JQJob
 {
+    /**
+     * Fetch this job's settings
+     *
+     * @return array A list of options about how to run this job.
+     */
+    function getEnqueueOptions();
+
     /**
      * Run the job.
      *

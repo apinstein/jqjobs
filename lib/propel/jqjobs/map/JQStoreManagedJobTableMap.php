@@ -47,6 +47,7 @@ class JQStoreManagedJobTableMap extends TableMap
 		$this->addColumn('JOB', 'Job', 'LONGVARCHAR', false, null, null);
 		$this->addPrimaryKey('JOB_ID', 'JobId', 'INTEGER', true, null, null);
 		$this->addColumn('MAX_ATTEMPTS', 'MaxAttempts', 'INTEGER', false, null, null);
+		$this->addColumn('MAX_RUNTIME_SECONDS', 'MaxRuntimeSeconds', 'INTEGER', false, null, null);
 		$this->addColumn('PRIORITY', 'Priority', 'INTEGER', false, null, null);
 		$this->addColumn('QUEUE_NAME', 'QueueName', 'LONGVARCHAR', false, null, null);
 		$this->addColumn('START_DTS', 'StartDts', 'TIMESTAMP', false, null, null);

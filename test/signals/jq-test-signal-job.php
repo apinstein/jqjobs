@@ -4,14 +4,30 @@
  * A test queue worker. Processes 1 job (or 0) and immediately exits.
  */
 require_once dirname(__FILE__) . '/../TestCommon.php';
-class SleepJob implements JQJob
+class UninterruptibleJob extends JQTestJob
 {
+    protected $runForNSeconds = 3;
+
+    public function __construct($runForNSeconds = 3)
+    {
+        $this->runForNSeconds = $runForNSeconds;
+    }
+
     public function run(JQManagedJob $mJob)
     {
-        // takes ~2 seconds and isn't interrupted by SIGNALS (sleep exists immediately)
-        for ($i = 0; $i < 300000; $i++) {
-            if ($i % 10000 === 0) print round(100*$i/300000) . "%\n";
+        // takes $runForNSeconds seconds and isn't interrupted by SIGNALS (sleep exists immediately)
+        $t0 = microtime(true);
+        $percentDone = 0;
+        $elapsedTime = 0;
+        while ($elapsedTime < $this->runForNSeconds) {
+            $elapsedTime = microtime(true) - $t0;
+            $percentDoneNow = (int) (100 * ($elapsedTime / $this->runForNSeconds));
             crypt('fooooooooooooooobaaaaaaaaaaaaaaaaaaaaar', CRYPT_BLOWFISH);
+            if ($percentDoneNow != $percentDone)
+            {
+                $percentDone = $percentDoneNow;
+                print "{$percentDone}%\n";
+            }
         }
         print "100%";
         return JQManagedJob::STATUS_COMPLETED;
@@ -27,7 +43,7 @@ class SleepJob implements JQJob
 
     public function description()
     {
-        return "Sleeping....";
+        return "Doing uninterruptible work for {$this->runForNSeconds} seconds....";
     }
 
 }

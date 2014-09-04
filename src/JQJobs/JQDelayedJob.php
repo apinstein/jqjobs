@@ -95,4 +95,5 @@ class JQDelayedJob implements JQJob
     function statusDidChange(JQManagedJob $mJob, $oldStatus, $message) {}
     function description() { return "Delayed job"; }
     function coalesceId() { return NULL; }
+    function getEnqueueOptions() { return array(); }
 }

@@ -1,17 +1,38 @@
 <?php
 
-// @todo factor out tests which exist in both JQStore_Array_Test and JQStore_Propel_Test into JQStore_All_Test
-// @todo factor out tests specific to JQStore_Array into JQStore_Array_Test
+// @todo factor out tests which exist in both JQStore_ArrayTest and JQStore_PropelTest into JQStore_AllTest
+// @todo factor out tests specific to JQStore_Array into JQStore_ArrayTest
+// @todo factor out tests in here that are really JQStore_* tests int JQStore_AllTest -- this file should probably be JQManagedJob
 
 require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQJobsTest extends PHPUnit_Framework_TestCase
 {
-    private function setup10SampleJobs($q, $queueName = 'test')
+    /**
+     * Utility function to help bootstrap states for testing.
+     */
+    public static function moveJobToStatus($mJob, $targetStatus)
+    {
+        // map on how to bootstrap a job to the "FROM" state
+        $pathForSetup = array(
+            JQManagedJob::STATUS_UNQUEUED       => array(),
+            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
+            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
+            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
+            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
+            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
+        );
+
+        foreach ($pathForSetup[$targetStatus] as $s) {
+            $mJob->setStatus($s);
+        }
+    }
+
+    private function setup10SampleJobs($q)
     {
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob($this), array('queueName' => $queueName));
+            $q->enqueue(new SampleJob());
         }
     }
 
@@ -59,7 +80,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleAsyncJob($this), array('queueName' => 'test'));
+            $q->enqueue(new SampleAsyncJob($this));
         }
 
         $this->assertEquals(10, $q->count());
@@ -83,7 +104,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+            $q->enqueue(new SampleJob());
         }
 
         // Start a worker to run the jobs.
@@ -103,7 +124,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleFailJob($this), array('queueName' => 'test'));
+            $q->enqueue(new SampleFailJob());
         }
 
         // Start a worker to run the jobs.
@@ -120,7 +141,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         // create a queuestore
         $q = new JQStore_Array();
-        $q->enqueue(new SampleFailJob($this), array('queueName' => 'test'));
+        $q->enqueue(new SampleFailJob());
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
@@ -142,7 +163,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // Add jobs
         foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob($this), array('queueName' => 'test'));
+            $q->enqueue(new SampleJob());
         }
 
         $this->assertEquals(10, $q->count());
@@ -178,12 +199,12 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
      */
     function testJobsWithNullCoalesceIdAreNotCoalesced()
     {
-        $qMock = $this->getMock('JQStore_Array', array('existsJobForCoalesceId'));
-        $qMock->expects($this->never())
-                            ->method('existsJobForCoalesceId')
-                            ;
+        $q = new JQStore_Array();
 
-        $qMock->enqueue(new SampleCoalescingJob(NULL), array('queueName' => 'test'));
+        $this->assertEquals(0, $q->count('test'));
+        $q->enqueue(new SampleCoalescingJob(NULL));
+        $q->enqueue(new SampleCoalescingJob(NULL));
+        $this->assertEquals(2, $q->count('test'));
     }
 
     /**
@@ -192,14 +213,12 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     function testJobsWithNonNullCoalesceIdAreCoalesced()
     {
         $coalesceId = 1234;
+        $q = new JQStore_Array();
 
-        $qMock = $this->getMock('JQStore_Array', array('existsJobForCoalesceId'));
-        $qMock->expects($this->once())
-                            ->method('existsJobForCoalesceId')
-                            ->with($coalesceId)
-                            ;
-
-        $qMock->enqueue(new SampleCoalescingJob($coalesceId), array('queueName' => 'test'));
+        $this->assertEquals(0, $q->count('test'));
+        $q->enqueue(new SampleCoalescingJob($coalesceId));
+        $q->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(1, $q->count('test'));
     }
     /**
      * @testdox JQJobs queues a coalescing job normally if there is no existing coalesceId
@@ -208,7 +227,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         $q = new JQStore_Array();
 
-        $q->enqueue(new SampleJob($this, 1), array('queueName' => 'test'));
+        $q->enqueue(new SampleCoalescingJob(4321));
 
         $this->assertEquals(1, $q->count('test'));
     }
@@ -221,8 +240,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // Add a job
         $coalesceId = 'foo';
         $insertedJob = new SampleCoalescingJob($coalesceId);
-        $options = array('queueName' => 'test');
-        $q->enqueue($insertedJob, $options);
+        $q->enqueue($insertedJob);
 
         // Try to retrieve a job by coalesceId, make sure it's the same object
         $retrievedJob = $q->getByCoalesceId($coalesceId)->getJob();
@@ -234,7 +252,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // create a queuestore
         $maxAttempts = 5;
         $q = new JQStore_Array();
-        $jqjob = $q->enqueue(new SampleFailJob($this), array('queueName' => 'test', 'maxAttempts' => $maxAttempts));
+        $mJob = $q->enqueue(new SampleFailJob(array('maxAttempts' => $maxAttempts)));
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
@@ -242,7 +260,44 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(0, $q->count('test', 'queued'));
         $this->assertEquals(1, $q->count('test', 'failed'));
-        $this->assertEquals($maxAttempts, $jqjob->getAttemptNumber());
+        $this->assertEquals($maxAttempts, $mJob->getAttemptNumber());
+    }
+
+    /**
+     * @dataProvider retryDataProvider
+     */
+    function testRetry($previousAttempts, $maxAttempts, $mulligan, $expectedStatus, $expectedMaxAttempts, $description)
+    {
+        if ($expectedMaxAttempts === NULL) $expectedMaxAttempts = $maxAttempts;
+
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        // set up initial condiitions
+        $testJob = new JQTestJob(array('maxAttempts' => $maxAttempts));
+        $mJob = new JQManagedJob($q, $testJob);
+        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
+        $mJob->setAttemptNumber($previousAttempts);
+        $mJob->markJobStarted();
+        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_RUNNING);
+
+        // fail job
+        $mJob->markJobFailed('retry', $mulligan);
+
+        $this->assertEquals($expectedStatus, $mJob->getStatus(), "Unexpected status");
+        $this->assertEquals($expectedMaxAttempts, $mJob->getMaxAttempts(), "Unexpected maxAttempts");
+    }
+    function retryDataProvider()
+    {
+        $maxMulligans = JQManagedJob::MULLIGAN_MAX_ATTEMPTS;
+        return array(
+            //      previousAttempts    maxAttempts     mulligan        expectedStatus                  expectedMaxAttempts     description
+            array(  0,                  1,              false,          JQManagedJob::STATUS_FAILED,    NULL,                   "normal failure after maxAttempts reached"),
+            array(  0,                  2,              false,          JQManagedJob::STATUS_QUEUED,    NULL,                   "normal retry under maxAttempts tries"),
+            array(  0,                  2,              true,           JQManagedJob::STATUS_QUEUED,    3,                      "normal mulligan retry"),
+            array(  $maxMulligans-2,    $maxMulligans,  true,           JQManagedJob::STATUS_QUEUED,    $maxMulligans,          "last mulligan retry"),
+            array(  $maxMulligans-1,    $maxMulligans,  true,           JQManagedJob::STATUS_FAILED,    $maxMulligans,          "failed -- too many mulligan retries"),
+        );
     }
 
     /**
@@ -281,26 +336,13 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
      */
     function testStateTransitions($from, $to, $expectedOk)
     {
-        // map on how to bootstrap a job to the "FROM" state
-        $pathForSetup = array(
-            JQManagedJob::STATUS_UNQUEUED       => array(),
-            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
-            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
-            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
-            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
-            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
-        );
-
         // create a queuestore
         $q = new JQStore_Array();
 
         // set up initial condiitions
         $mJob = new JQManagedJob($q);
-        foreach ($pathForSetup[$from] as $s) {
-            $mJob->setStatus($s);
-        }
+        JQJobsTest::moveJobToStatus($mJob, $from);
         $this->assertEquals($from, $mJob->getStatus());
-        // initial cond OK
 
         $transition = "[" . ($expectedOk ? 'OK' : 'NO') . "] {$from} => {$to}";
         if ($expectedOk)
@@ -355,4 +397,76 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         }
         return $testCases;
     }
+
+    /**
+     * @testdox maxRuntimeSeconds defaults to NULL (disabled)
+     */
+    function testDefaultMaxRuntimeSecondsIsNull()
+    {
+        $q = new JQStore_Array();
+        $mJob = new JQManagedJob($q);
+        $this->assertNull($mJob->getMaxRuntimeSeconds());
+    }
+
+    /**
+     * @dataProvider failedJobDetectionDataProvider
+     */
+    function testFailedJobDetection($errorGeneratorF, $exceptionMessageContains)
+    {
+        // setup
+        $q = new JQStore_Array();
+        $mJob = new JQManagedJob($q, new SampleCallbackJob($errorGeneratorF));
+        $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
+        $mJob->markJobStarted();
+
+        // run
+        $err = $mJob->run($mJob);
+        $this->assertEquals($exceptionMessageContains, $err, "JQManagedJob::run() failed to detect {$exceptionMessageContains}");
+    }
+    function failedJobDetectionDataProvider()
+    {
+        // Handles: E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_USER_ERROR | E_RECOVERABLE_ERROR => 4597
+        return array(
+            array(
+                function() {
+                    throw new JobTestException('JobTestException');
+                },
+                'JobTestException'
+            ),
+            array(
+                function() {
+                    trigger_error("E_USER_ERROR", E_USER_ERROR);
+                },
+                'E_USER_ERROR'
+            ),
+        );
+    }
+
+    /**
+     * @dataProvider autoscalingAlgorithmsDataProvider
+     */
+    function testAutoscalingAlgorithms($algo, $numPending, $maxConcurrency, $expectedValue)
+    {
+        $this->assertEquals($expectedValue, JQAutoscaler::calculateScale($algo, $numPending, $maxConcurrency));
+    }
+    function autoscalingAlgorithmsDataProvider()
+    {
+        return array(
+            //    algorithm         pending     max     expected
+            array('linear',         0,          100,    0),
+            array('linear',         1,          100,    1),
+            array('linear',         50,         100,    50),
+            array('linear',         100,        100,    100),
+            array('linear',         101,        100,    100),
+            array('linear',         500,        100,    100),
+            array('halfLinear',     0,          100,    0),
+            array('halfLinear',     1,          100,    1),
+            array('halfLinear',     2,          100,    1),
+            array('halfLinear',     199,        100,    99),
+            array('halfLinear',     200,        100,    100),
+            array('halfLinear',     201,        100,    100),
+        );
+    }
 }
+
+class JobTestException extends Exception {}

@@ -14,6 +14,7 @@
  * @method     JQStoreManagedJobQuery orderByJob($order = Criteria::ASC) Order by the job column
  * @method     JQStoreManagedJobQuery orderByJobId($order = Criteria::ASC) Order by the job_id column
  * @method     JQStoreManagedJobQuery orderByMaxAttempts($order = Criteria::ASC) Order by the max_attempts column
+ * @method     JQStoreManagedJobQuery orderByMaxRuntimeSeconds($order = Criteria::ASC) Order by the max_runtime_seconds column
  * @method     JQStoreManagedJobQuery orderByPriority($order = Criteria::ASC) Order by the priority column
  * @method     JQStoreManagedJobQuery orderByQueueName($order = Criteria::ASC) Order by the queue_name column
  * @method     JQStoreManagedJobQuery orderByStartDts($order = Criteria::ASC) Order by the start_dts column
@@ -27,6 +28,7 @@
  * @method     JQStoreManagedJobQuery groupByJob() Group by the job column
  * @method     JQStoreManagedJobQuery groupByJobId() Group by the job_id column
  * @method     JQStoreManagedJobQuery groupByMaxAttempts() Group by the max_attempts column
+ * @method     JQStoreManagedJobQuery groupByMaxRuntimeSeconds() Group by the max_runtime_seconds column
  * @method     JQStoreManagedJobQuery groupByPriority() Group by the priority column
  * @method     JQStoreManagedJobQuery groupByQueueName() Group by the queue_name column
  * @method     JQStoreManagedJobQuery groupByStartDts() Group by the start_dts column
@@ -47,6 +49,7 @@
  * @method     JQStoreManagedJob findOneByJob(string $job) Return the first JQStoreManagedJob filtered by the job column
  * @method     JQStoreManagedJob findOneByJobId(int $job_id) Return the first JQStoreManagedJob filtered by the job_id column
  * @method     JQStoreManagedJob findOneByMaxAttempts(int $max_attempts) Return the first JQStoreManagedJob filtered by the max_attempts column
+ * @method     JQStoreManagedJob findOneByMaxRuntimeSeconds(int $max_runtime_seconds) Return the first JQStoreManagedJob filtered by the max_runtime_seconds column
  * @method     JQStoreManagedJob findOneByPriority(int $priority) Return the first JQStoreManagedJob filtered by the priority column
  * @method     JQStoreManagedJob findOneByQueueName(string $queue_name) Return the first JQStoreManagedJob filtered by the queue_name column
  * @method     JQStoreManagedJob findOneByStartDts(string $start_dts) Return the first JQStoreManagedJob filtered by the start_dts column
@@ -60,6 +63,7 @@
  * @method     array findByJob(string $job) Return JQStoreManagedJob objects filtered by the job column
  * @method     array findByJobId(int $job_id) Return JQStoreManagedJob objects filtered by the job_id column
  * @method     array findByMaxAttempts(int $max_attempts) Return JQStoreManagedJob objects filtered by the max_attempts column
+ * @method     array findByMaxRuntimeSeconds(int $max_runtime_seconds) Return JQStoreManagedJob objects filtered by the max_runtime_seconds column
  * @method     array findByPriority(int $priority) Return JQStoreManagedJob objects filtered by the priority column
  * @method     array findByQueueName(string $queue_name) Return JQStoreManagedJob objects filtered by the queue_name column
  * @method     array findByStartDts(string $start_dts) Return JQStoreManagedJob objects filtered by the start_dts column
@@ -152,7 +156,7 @@ abstract class BaseJQStoreManagedJobQuery extends ModelCriteria
 	 */
 	protected function findPkSimple($key, $con)
 	{
-		$sql = 'SELECT ATTEMPT_NUMBER, COALESCE_ID, CREATION_DTS, END_DTS, ERROR_MESSAGE, JOB, JOB_ID, MAX_ATTEMPTS, PRIORITY, QUEUE_NAME, START_DTS, STATUS FROM jqstore_managed_job WHERE JOB_ID = :p0';
+		$sql = 'SELECT ATTEMPT_NUMBER, COALESCE_ID, CREATION_DTS, END_DTS, ERROR_MESSAGE, JOB, JOB_ID, MAX_ATTEMPTS, MAX_RUNTIME_SECONDS, PRIORITY, QUEUE_NAME, START_DTS, STATUS FROM jqstore_managed_job WHERE JOB_ID = :p0';
 		try {
 			$stmt = $con->prepare($sql);
 			$stmt->bindValue(':p0', $key, PDO::PARAM_INT);
@@ -509,6 +513,46 @@ abstract class BaseJQStoreManagedJobQuery extends ModelCriteria
 			}
 		}
 		return $this->addUsingAlias(JQStoreManagedJobPeer::MAX_ATTEMPTS, $maxAttempts, $comparison);
+	}
+
+	/**
+	 * Filter the query on the max_runtime_seconds column
+	 *
+	 * Example usage:
+	 * <code>
+	 * $query->filterByMaxRuntimeSeconds(1234); // WHERE max_runtime_seconds = 1234
+	 * $query->filterByMaxRuntimeSeconds(array(12, 34)); // WHERE max_runtime_seconds IN (12, 34)
+	 * $query->filterByMaxRuntimeSeconds(array('min' => 12)); // WHERE max_runtime_seconds > 12
+	 * </code>
+	 *
+	 * @param     mixed $maxRuntimeSeconds The value to use as filter.
+	 *              Use scalar values for equality.
+	 *              Use array values for in_array() equivalent.
+	 *              Use associative array('min' => $minValue, 'max' => $maxValue) for intervals.
+	 * @param     string $comparison Operator to use for the column comparison, defaults to Criteria::EQUAL
+	 *
+	 * @return    JQStoreManagedJobQuery The current query, for fluid interface
+	 */
+	public function filterByMaxRuntimeSeconds($maxRuntimeSeconds = null, $comparison = null)
+	{
+		if (is_array($maxRuntimeSeconds)) {
+			$useMinMax = false;
+			if (isset($maxRuntimeSeconds['min'])) {
+				$this->addUsingAlias(JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS, $maxRuntimeSeconds['min'], Criteria::GREATER_EQUAL);
+				$useMinMax = true;
+			}
+			if (isset($maxRuntimeSeconds['max'])) {
+				$this->addUsingAlias(JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS, $maxRuntimeSeconds['max'], Criteria::LESS_EQUAL);
+				$useMinMax = true;
+			}
+			if ($useMinMax) {
+				return $this;
+			}
+			if (null === $comparison) {
+				$comparison = Criteria::IN;
+			}
+		}
+		return $this->addUsingAlias(JQStoreManagedJobPeer::MAX_RUNTIME_SECONDS, $maxRuntimeSeconds, $comparison);
 	}
 
 	/**

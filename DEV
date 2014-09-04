@@ -1,15 +1,39 @@
-To set up a local pear sandbox:
+1. Install composer:
 
-pear channel-discover pearfarm.pearfarm.org
-pear install pearfarm/comice
+http://getcomposer.org/doc/00-intro.md#installation-nix
 
-comice pear-init
+2. Run composer
 
-comice pear channel-discover apinstein.pearfarm.org
-comice pear channel-discover pear.propelorm.org
-comice pear install apinstein/mp apinstein/propel_generator propel/propel_runtime
-comice pear channel-discover pear.phpunit.de
-comice pear install phpunit/PHPUnit
+php composer.phar install
+
+3. Install test databse (requires a running postgres instance)
+
+createdb -U postgres jqjobs_test
+./vendor/bin/mp -x'pgsql:dbname=jqjobs_test;user=postgres;host=localhost' -r -m head
+
+4. Run tests
+
+# main unit tests
+./vendor/bin/phpunit
+
+# remaining tests are shell script based and leverage environment vars
+export PSQL_BIN=/usr/bin/psql         # ...or your psql path
+export PG_DUMP_BIN=/usr/bin/pg_dump   # ...or your pg_dump path
+export PHP_BIN=/usr/bin/php           # ...or your php path
+export SEQ_BIN=/usr/bin/seq           # ...or your seq path
+
+# misc integration tests
+cd test/concurrency-test-script && sh concurrency-test.sh
+# you will need to manually run the tests in test/shutdown-error-tests to make sure they behave as indicated
+cd test/shutdown-error-tests
+for i in *.php; do php $i; done
+# you will need to manually run the tests in test/signals to make sure they behave as indicated
+cd test/signals
+./run-test.sh
+
+#################################################################
+Working on changes to the JQManagedJob model that affect the DB?
+#################################################################
 
 # to use propel-gen
 export PHING_COMMAND=`pwd`/externals/pear/phing
@@ -19,19 +43,11 @@ comice exec propel-gen -l
 #PHP_COMMAND="/usr/bin/php"
 #export PHP_COMMAND 
 
-# build db
-createdb -U postgres jqjobs_test
-comice exec mp -x'pgsql:dbname=jqjobs_test;user=postgres;host=localhost' -r -m head
-
 # to rebuild propel
 # from project root dir
-comice exec propel-gen propel-build reverse && \
+./vendor/bin/propel-gen propel-build reverse && \
     php propel-build/fix-schema.php && \
-    comice exec propel-gen propel-build om convert-conf
-
-# to run tests
-comice exec phpunit test
-cd test/concurrency-test-script && sh concurrency-test.sh
+    ./vendor/bin/propel-gen propel-build om convert-conf
 
 # tags
 ctags -f tags -R --extra=+f *php lib

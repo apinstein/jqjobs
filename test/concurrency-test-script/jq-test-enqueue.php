@@ -10,7 +10,7 @@ $numToEnqueue = $argv[2];
 $q = getTestJQStore();
 while ($numToEnqueue) {
     $cJobId = "{$jobId}.{$numToEnqueue}";
-    $q->enqueue(new CTestJob($cJobId), array('queueName' => 'concurrency-test'));
+    $q->enqueue(new ConcurrencyTestJob($cJobId));
     $numToEnqueue--;
     print "Enqueued job {$cJobId}\n";
 }
