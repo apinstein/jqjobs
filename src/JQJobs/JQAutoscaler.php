@@ -44,6 +44,11 @@ class JQAutoscaler
         $this->minSecondsToProcessDownScale = max($this->minSecondsToProcessDownScale, $this->scalable->minSecondsToProcessDownScale());
     }
 
+    public function setScalerPollingInterval(integer $newInterval)
+    {
+        $this->scalerPollingInterval = $newInterval;
+    }
+
     public function run()
     {
         while (true) {
