@@ -7,15 +7,13 @@
  * The propel class should have all fields coded in JQManagedJob::persistableFields().
  *
  * This queue is suitable for moderate to heavy workloads (dozens to hundreds of jobs per second) and supports concurrent access from multiple workers.
- * This queue supports JQAutoscaler.
  */
-class JQStore_Propel implements JQStore, JQStore_Autoscalable
+class JQStore_Propel implements JQStore
 {
     protected $con;
     protected $propelClassName;
     protected $options;
     protected $mutexInUse;
-    protected $autoscaler;
 
     /**
      * JQStore/Propel driver constructor.
@@ -30,38 +28,27 @@ class JQStore_Propel implements JQStore, JQStore_Autoscalable
         $this->propelClassName = $propelClassName;
         $this->con = $con;
         $this->mutexInUse = false;
-        $this->autoscaler = NULL;
 
-        $this->options = array_merge(array(
-                                            'tableName'                     => 'JQStoreManagedJob',
-                                            'jobIdColName'                  => 'JOB_ID',
-                                            'jobCoalesceIdColName'          => 'COALESCE_ID',
-                                            'jobQueueNameColName'           => 'QUEUE_NAME',
-                                            'jobStatusColName'              => 'STATUS',
-                                            'jobPriorityColName'            => 'PRIORITY',
-                                            'jobStartDtsColName'            => 'START_DTS',
-                                            'jobEndDtsColName'              => 'END_DTS',
-                                            'jobMaxRuntimeSecondsColName'   => 'MAX_RUNTIME_SECONDS',
-                                            'toArrayOptions'                => array('dtsFormat' => 'r'),
-                                          ),
-                                     $options
-                                    );
+        $this->options = array_merge(
+            array(
+                'tableName'                   => 'JQStoreManagedJob',
+                'jobIdColName'                => 'JOB_ID',
+                'jobCoalesceIdColName'        => 'COALESCE_ID',
+                'jobQueueNameColName'         => 'QUEUE_NAME',
+                'jobStatusColName'            => 'STATUS',
+                'jobPriorityColName'          => 'PRIORITY',
+                'jobStartDtsColName'          => 'START_DTS',
+                'jobEndDtsColName'            => 'END_DTS',
+                'jobMaxRuntimeSecondsColName' => 'MAX_RUNTIME_SECONDS',
+                'toArrayOptions'              => array('dtsFormat' => 'r'),
+            ),
+            $options
+        );
         // eval propel constants, thanks php 5.2 :( On 5.3 I think we can do $this->propelClassName::TABLE_NAME etc...
         $this->options['tableName'] = eval("return {$this->propelClassName}Peer::TABLE_NAME;");
         foreach (array('jobIdColName', 'jobQueueNameColName', 'jobStatusColName', 'jobPriorityColName', 'jobStartDtsColName', 'jobEndDtsColName') as $colName) {
             $this->options[$colName] = eval("return {$this->propelClassName}Peer::{$this->options[$colName]};");
         }
-    }
-
-    public function setAutoscaler(JQAutoscaler $as)
-    {
-        $this->autoscaler = $as;
-    }
-
-    public function runAutoscaler()
-    {
-        if (!$this->autoscaler) throw new Exception("No autoscaler configured.");
-        $this->autoscaler->run();
     }
 
     public function enqueue(JQJob $job)
