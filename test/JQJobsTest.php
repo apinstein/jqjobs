@@ -301,6 +301,45 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @dataProvider retryStateDataProvider
+     */
+    function testRetryWorksVsCurrentState($initialStatus, $expectedRetryOK)
+    {
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        // set up initial condiitions
+        $testJob = new JQTestJob(array('maxAttempts' => $maxAttempts));
+        $mJob = new JQManagedJob($q, $testJob);
+        JQJobsTest::moveJobToStatus($mJob, $initialStatus);
+        $mJob->setAttemptNumber($previousAttempts);
+
+        if (!$expectedRetryOK)
+        {
+            $this->setExpectedException('JQManagedJob_InvalidStateChangeException');
+        }
+        $retryOK = $mJob->retry();
+        if ($expectedRetryOK)
+        {
+            $this->assertTrue($retryOK, "Retry should have succeeded.");
+            $this->assertEquals(JQManagedJob::STATUS_QUEUED, $mJob->getStatus(), "job should be queued again");
+        }
+    }
+
+    function retryStateDataProvider()
+    {
+        return array(
+                                                        // INITIAL STATE                RETRY SHOULD WORK
+            'Unueued job can be retried'    => array(JQManagedJob::STATUS_UNQUEUED,     true),
+            'Queued job can be retried'     => array(JQManagedJob::STATUS_QUEUED,       true),
+            'Running job can be retried'    => array(JQManagedJob::STATUS_RUNNING,      true),
+            'Wait Async job can be retried' => array(JQManagedJob::STATUS_WAIT_ASYNC,   true),
+            'Failed job can be retried'     => array(JQManagedJob::STATUS_FAILED,       true),
+            'Completed job can be retried'  => array(JQManagedJob::STATUS_COMPLETED,    false),
+        );
+    }
+
+    /**
      * @testdox option priority_adjust defaults to NULL and proc_nice will not be called.
      */
     function testAdjustPriorityDefault()
