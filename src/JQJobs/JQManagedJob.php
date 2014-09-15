@@ -2,6 +2,7 @@
 // vim: set expandtab tabstop=4 shiftwidth=4:
 
 class JQManagedJob_AlreadyHasAJobException extends Exception { }
+class JQManagedJob_InvalidStateChangeException extends Exception { }
 
 /**
  * JQManagedJob is the core unit of work for the Job system.
@@ -314,7 +315,7 @@ final class JQManagedJob
                  OR ($oldStatus === self::STATUS_FAILED && $newStatus === self::STATUS_QUEUED)
             ))
         {
-            throw new Exception("Invalid state change: {$oldStatus} => {$newStatus}");
+            throw new JQManagedJob_InvalidStateChangeException("Invalid state change: {$oldStatus} => {$newStatus}");
         }
 
         $this->status = $newStatus;
@@ -482,7 +483,10 @@ final class JQManagedJob
         {
             // OK to retry
             // @todo it's a little lame that this doesn't re-queue at the end of the queue; or maybe jobs should have requeue option; END, after X seconds; right away? longer each time, @ 2x last run time?
-            $this->startDts->modify("+10 seconds");
+            if ($this->startDts)
+            {
+                $this->startDts->modify("+10 seconds");
+            }
             $this->endDts = NULL;
             $this->setStatus(JQManagedJob::STATUS_QUEUED);
             $this->save();
