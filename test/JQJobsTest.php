@@ -309,10 +309,9 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q = new JQStore_Array();
 
         // set up initial condiitions
-        $testJob = new JQTestJob(array('maxAttempts' => $maxAttempts));
+        $testJob = new JQTestJob();
         $mJob = new JQManagedJob($q, $testJob);
         JQJobsTest::moveJobToStatus($mJob, $initialStatus);
-        $mJob->setAttemptNumber($previousAttempts);
 
         if (!$expectedRetryOK)
         {
