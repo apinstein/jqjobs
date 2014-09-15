@@ -327,14 +327,13 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     function retryStateDataProvider()
     {
-        return array(
-                                                        // INITIAL STATE                RETRY SHOULD WORK
-            'Unueued job can be retried'    => array(JQManagedJob::STATUS_UNQUEUED,     true),
-            'Queued job can be retried'     => array(JQManagedJob::STATUS_QUEUED,       true),
-            'Running job can be retried'    => array(JQManagedJob::STATUS_RUNNING,      true),
-            'Wait Async job can be retried' => array(JQManagedJob::STATUS_WAIT_ASYNC,   true),
-            'Failed job can be retried'     => array(JQManagedJob::STATUS_FAILED,       true),
-            'Completed job can be retried'  => array(JQManagedJob::STATUS_COMPLETED,    false),
+        return array(                               // INITIAL STATE                      RETRY SHOULD WORK
+            'Unueued job can be retried'      => array(JQManagedJob::STATUS_UNQUEUED,     true),
+            'Queued job can be retried'       => array(JQManagedJob::STATUS_QUEUED,       true),
+            'Running job can be retried'      => array(JQManagedJob::STATUS_RUNNING,      true),
+            'Wait Async job can be retried'   => array(JQManagedJob::STATUS_WAIT_ASYNC,   true),
+            'Failed job can be retried'       => array(JQManagedJob::STATUS_FAILED,       true),
+            'Completed job cannot be retried' => array(JQManagedJob::STATUS_COMPLETED,    false),
         );
     }
 
