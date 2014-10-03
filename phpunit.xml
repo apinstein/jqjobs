@@ -2,6 +2,10 @@
     convertErrorsToExceptions="false"
     convertNoticesToExceptions="false"
     convertWarningsToExceptions="false"
+    backupGlobals="false"
+    backupStaticAttributes="false"
+    colors="true"
+    cacheTokens="false"
     bootstrap="test/bootstrap.php"
     >
     <testsuites>
