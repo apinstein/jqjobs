@@ -2,7 +2,6 @@
 *.swp
 package.xml
 migrations/version.txt
-externals
 vendor
 .pearrc
 tags
