@@ -3,6 +3,9 @@
 require_once dirname(__FILE__) . '/TestCommon.php';
 require_once dirname(__FILE__) . '/JQStore_AllTest.php';
 
+/**
+ * @group JQStore_Propel
+ */
 class JQStore_PropelTest extends JQStore_AllTest
 {
     function setup()
