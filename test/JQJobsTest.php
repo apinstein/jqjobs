@@ -76,6 +76,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * ManagedJobTest? WorkerTest?
      * @testdox Test JQJobs catches fatal PHP errors during job execution and marks job as failed
      */
     function testJqJobsCatchesPHPErrorDuringJob()
@@ -93,6 +94,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * WorkerTest?
      * @testdox Worker option exitAfterNJobs: NULL means never exit, positive integer will exit after N jobs
      */
     function testWorkerOptionExitAfterNJobs()
@@ -188,6 +190,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($insertedJob, $retrievedJob);
     }
 
+    // ManagedJobTest?
     function testJobsAutoRetryOnFailure()
     {
         // create a queuestore

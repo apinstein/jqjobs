@@ -16,6 +16,16 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         return $jobIdsByIndex;
     }
 
+    private function setup10QuietSimpleJobs()
+    {
+        $jobIdsByIndex = array();
+        foreach (range(1,10) as $i) {
+            $job = $this->jqStore->enqueue(new QuietSimpleJob($i));
+            $jobIdsByIndex[] = $job->getJobId();
+        }
+        return $jobIdsByIndex;
+    }
+
     function testGetJobWithoutMutex()
     {
         $jobsById = $this->setup10SampleJobs();
@@ -28,9 +38,8 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
 
     function testGetJobWithMutexLocksJobSuccessfully()
     {
-        $this->setup10SampleJobs();
-
-        $jobId = 1;
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
+        $jobId = current($jobIdsByIndex);
         $j = $this->jqStore->getWithMutex($jobId);
         $this->setExpectedException('JQStore_JobIsLockedException');
         $this->jqStore->getWithMutex($jobId);
@@ -38,9 +47,8 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
 
     function testGetJobWithMutexThenClearThenLock()
     {
-        $this->setup10SampleJobs();
-
-        $jobId = 1;
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
+        $jobId = current($jobIdsByIndex);
         $this->jqStore->getWithMutex($jobId);
         $this->jqStore->clearMutex($jobId);
         $this->jqStore->getWithMutex($jobId);
@@ -90,35 +98,6 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
             $foundCount++;
         }
         $this->assertEquals(10, $foundCount);
-    }
-
-    /**
-     * @testdox Test Basic JQJobs Processing
-     */
-    function testJQJobs()
-    {
-        // create a queuestore
-        $q = new JQStore_Array();
-
-        $this->assertEquals(0, $q->count('test'));
-
-        // Add jobs
-        foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob());
-        }
-
-        $this->assertEquals(10, $q->count());
-        $this->assertEquals(10, $q->count('test'));
-        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
-
-        SampleJobCounter::reset();
-
-        // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
-        $w->start();
-
-        $this->assertEquals(10, SampleJobCounter::count());
-        $this->assertEquals(0, $q->count('test'));
     }
 
     /**
@@ -210,4 +189,45 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         );
     }
 
+    /**
+     * @testdox Test Basic JQJobs Processing using JQStore_Propel
+     */
+    function testJQJobs()
+    {
+        $q = $this->jqStore;
+        $this->assertEquals(0, $q->count('test'));
+
+        // Add jobs
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new QuietSimpleJob($i));
+        }
+
+        $this->assertEquals(10, $q->count());
+        $this->assertEquals(10, $q->count('test'));
+        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(10, $w->jobsProcessed());
+        $this->assertEquals(0, $q->count('test'));
+    }
+
+    function testJobsAreRetrieveableByCoalesceId()
+    {
+        // Add some jobs
+        $coalesceId  = 'foo';
+        $insertedJob = new SampleCoalescingJob($coalesceId);
+        $this->jqStore->enqueue($insertedJob);
+
+        // Make sure we have a job enqueued
+        // Helpful for debugging...
+        $this->assertEquals(1, $this->jqStore->count('test'));
+        $this->assertEquals($coalesceId, $insertedJob->coalesceId());
+
+        // Make sure the job exists for the coalesceId
+        $retrievedJob = $this->jqStore->getByCoalesceId($coalesceId)->getJob();
+        $this->assertEquals($insertedJob, $retrievedJob);
+    }
 }
