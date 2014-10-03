@@ -96,6 +96,24 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @testdox get() throws JQStore_JobNotFoundException if job cannot be found
+     */
+    function testGetNotFound()
+    {
+        $this->setExpectedException('JQStore_JobNotFoundException');
+        $this->jqStore->get(9999);
+    }
+
+    /**
+     * @testdox getWithMutex() throws JQStore_JobNotFoundException if job cannot be found
+     */
+    function testGetMutexNotFound()
+    {
+        $this->setExpectedException('JQStore_JobNotFoundException');
+        $this->jqStore->getWithMutex(9999);
+    }
+
+    /**
      * @dataProvider jobIsPastMaxRuntimeSecondsDataProvider
      */
     function testDetectHungJobs($maxRuntimeSeconds, $currentStatus, $startDts, $expectedMulligan, $description)

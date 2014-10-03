@@ -92,6 +92,8 @@ class JQStore_Array implements JQStore
     }
     public function get($jobId)
     {
+        if (!isset($this->queue[$jobId])) throw new JQStore_JobNotFoundException();
+
         return $this->queue[$jobId];
     }
     public function getWithMutex($jobId)
