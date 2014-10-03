@@ -180,8 +180,14 @@ class SampleAsyncJob extends JQTestJob
         parent::__construct($enqueueOptions);
     }
     function run(JQManagedJob $mJob) { return JQManagedJob::STATUS_WAIT_ASYNC; }
+    function resolveWaitAsyncJob($goToState)
+    {
+        if ($goToState === 'SampleAsyncJob_ResolveException') throw new SampleAsyncJob_ResolveException();
+        return $goToState;
+    }
     function description() { return "Sample async job"; }
 }
+class SampleAsyncJob_ResolveException extends Exception {}
 
 class SampleExceptionalUnserializerJob extends JQTestJob
 {

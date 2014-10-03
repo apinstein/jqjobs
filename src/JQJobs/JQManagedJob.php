@@ -416,6 +416,62 @@ final class JQManagedJob
     }
 
     /**
+     * @param object JQStore
+     * @param string The jobId
+     * @param mixed The data/payload to report to the job's resolveWaitAsyncJob() method..
+     * @param boolean TRUE to convert exceptions thrown during resolveWaitAsyncJob() to FAILURE (mark job failed).
+     *                FALSE to re-throw exceptions. Useful for a webhook to re-try Exceptional failures. 
+     *                Default FALSE.
+     * @throws object JQStore_JobNotFoundException
+     * @throws object Exception Unhandled exceptions.
+     * @return void
+     */
+    public static function resolveWaitAsyncJob(JQStore $q, $jobId, $data, $convertExceptionToFailure = false)
+    {
+        // load job WITH MUTEX
+        $mJob = $q->getWithMutex($jobId);
+
+        // wrap so we can "finally" the clearMutex()
+        try {
+            // allow the job to process the async data update
+            $err = NULL;
+            try {
+                $disposition = ErrorManager::wrap(array($mJob->getJob(), 'resolveWaitAsyncJob'), array($data), array($mJob, 'errorHandlerFailJob'));
+            } catch (Exception $e) {
+                if ($convertExceptionToFailure)
+                {
+                    $err = $e->getMessage();
+                    $disposition = self::STATUS_FAILED;
+                }
+                else
+                {
+                    throw $e;
+                }
+            }
+
+            // move job to disposition returned by resolveWaitAsyncJob
+            switch ($disposition) {
+                case self::STATUS_COMPLETED:
+                    $mJob->markJobComplete();
+                    break;
+                case self::STATUS_WAIT_ASYNC:
+                    $mJob->markJobWaitAsync();
+                    break;
+                case self::STATUS_FAILED:
+                    $mJob->markJobFailed($err);
+                    break;
+                default:
+                    throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->run(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
+            }
+
+            $q->clearMutex($jobId);
+        } catch (Exception $e) {
+            $q->clearMutex($jobId);
+            throw $e;
+        }
+    }
+
+    /**
      * Mark the job as completed.
      *
      * This function tells the JQStore to delete the JQManagedJob.
