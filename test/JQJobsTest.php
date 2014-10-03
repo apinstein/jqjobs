@@ -88,7 +88,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_WAIT_ASYNC));
@@ -108,7 +108,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         }
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(0, $q->count('test'), "JQJobs didn't seem to automatically remove completed jobs.");
@@ -128,7 +128,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         }
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, $q->count('test'), "JQJobs didn't seem to leave intact failed jobs.");
@@ -144,7 +144,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q->enqueue(new SampleFailJob());
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(0, $q->count('test', 'queued'));
@@ -173,21 +173,21 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         SampleJobCounter::reset();
 
         // Start a worker to run 1 job
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 1, 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 1, 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(1, SampleJobCounter::count());
         $this->assertEquals(9, $q->count('test'));
 
         // Start a worker to run 2 jobs
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 2, 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 2, 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(3, SampleJobCounter::count());
         $this->assertEquals(7, $q->count('test'));
 
         // Start a worker to run remaining
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => NULL, 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => NULL, 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, SampleJobCounter::count());
@@ -255,7 +255,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $mJob = $q->enqueue(new SampleFailJob(array('maxAttempts' => $maxAttempts)));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(0, $q->count('test', 'queued'));
@@ -345,7 +345,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q = new JQStore_Array();
 
         // test no adjustment uses default
-        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true)));
+        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false)));
         $wMock->expects($this->never())
                             ->method('adjustPriority')
                             ;
@@ -360,7 +360,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q = new JQStore_Array();
 
         // test with adjustment
-        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('adjustPriority' => 10, 'queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true)));
+        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('adjustPriority' => 10, 'queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false)));
         $wMock->expects($this->once())
                             ->method('adjustPriority')
                             ->with(10)

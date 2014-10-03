@@ -43,7 +43,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, $w->jobsProcessed());
@@ -108,7 +108,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         $serializedJob = $mJobArray['job'];
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($this->jqStore, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($this->jqStore, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         // have to re-fetch job since db state changed...
@@ -162,7 +162,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         $mJob->setStatus(JQManagedJob::STATUS_FAILED);
         $dbJob->setStatus(JQManagedJob::STATUS_FAILED);
         // attempt to gracefully retry; should mark as queued
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->gracefullyRetryCurrentJob($mJob);
 
         $this->assertEquals(1, $q->count('test', JQManagedJob::STATUS_QUEUED));

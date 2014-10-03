@@ -73,7 +73,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         SampleJobCounter::reset();
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, SampleJobCounter::count());
