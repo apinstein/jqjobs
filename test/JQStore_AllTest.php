@@ -54,21 +54,6 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $this->jqStore->getWithMutex($jobId);
     }
 
-    /**
-     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
-     */
-    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
-    {
-        $coalesceId = 1234;
-
-        $firstJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
-        $this->assertEquals(1, $this->jqStore->count('test'));
-
-        $secondJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
-        $this->assertEquals(1, $this->jqStore->count('test'));
-        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
-    }
-
     function testCountJobs()
     {
         $q = $this->jqStore;
@@ -214,6 +199,21 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, $q->count('test'));
     }
 
+    /**
+     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
+     */
+    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
+    {
+        $coalesceId = 1234;
+
+        $firstJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(1, $this->jqStore->count('test'));
+
+        $secondJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(1, $this->jqStore->count('test'));
+        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
+    }
+
     function testJobsAreRetrieveableByCoalesceId()
     {
         // Add some jobs
@@ -229,5 +229,10 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         // Make sure the job exists for the coalesceId
         $retrievedJob = $this->jqStore->getByCoalesceId($coalesceId)->getJob();
         $this->assertEquals($insertedJob, $retrievedJob);
+    }
+
+    function testGetByCoalesceIdWhenNoJobExists()
+    {
+        $this->assertNull($this->jqStore->getByCoalesceId('doesnotexist'));
     }
 }

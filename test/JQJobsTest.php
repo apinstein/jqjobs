@@ -190,6 +190,33 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($insertedJob, $retrievedJob);
     }
 
+    /**
+     * @dataProvider restartJobAttributeDataProvider
+     */
+    function testRestartJob($attr, $expectedVal)
+    {
+        // setup by failing a job...
+        $q = new JQStore_Array();
+        $mJob = $q->enqueue(new SampleFailJob());
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+        $this->assertNotEquals($attr, $expectedVal, "failed job should not already have expected value for state.");
+
+        // restart and verify
+        $mJob->restart();
+        $f = "get{$attr}";
+        $this->assertEquals($expectedVal, $mJob->$f(), "restart didn't reset attribute");
+    }
+    function restartJobAttributeDataProvider()
+    {
+        return array(
+            'restart() sets attemptNumber to 0' => array('attemptNumber',   0),
+            'restart() sets startDts to NULL'   => array('startDts',        NULL),
+            'restart() sets endDts to NULL'     => array('endDts',          NULL),
+            'restart() sets status to queued'   => array('status',          JQManagedJob::STATUS_QUEUED),
+        );
+    }
+
     // ManagedJobTest?
     function testJobsAutoRetryOnFailure()
     {
