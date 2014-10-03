@@ -237,7 +237,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     /**
      * @dataProvider retryDataProvider
      */
-    function testRetry($previousAttempts, $maxAttempts, $mulligan, $expectedStatus, $expectedMaxAttempts, $description)
+    function testRetry($previousAttempts, $maxAttempts, $mulligan, $expectedStatus, $expectedMaxAttempts)
     {
         if ($expectedMaxAttempts === NULL) $expectedMaxAttempts = $maxAttempts;
 
@@ -262,12 +262,17 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         $maxMulligans = JQManagedJob::MULLIGAN_MAX_ATTEMPTS;
         return array(
-            //      previousAttempts    maxAttempts     mulligan        expectedStatus                  expectedMaxAttempts     description
-            array(  0,                  1,              false,          JQManagedJob::STATUS_FAILED,    NULL,                   "normal failure after maxAttempts reached"),
-            array(  0,                  2,              false,          JQManagedJob::STATUS_QUEUED,    NULL,                   "normal retry under maxAttempts tries"),
-            array(  0,                  2,              true,           JQManagedJob::STATUS_QUEUED,    3,                      "normal mulligan retry"),
-            array(  $maxMulligans-2,    $maxMulligans,  true,           JQManagedJob::STATUS_QUEUED,    $maxMulligans,          "last mulligan retry"),
-            array(  $maxMulligans-1,    $maxMulligans,  true,           JQManagedJob::STATUS_FAILED,    $maxMulligans,          "failed -- too many mulligan retries"),
+            //              previousAttempts    maxAttempts     mulligan        expectedStatus                  expectedMaxAttempts
+            "normal failure after maxAttempts reached" =>
+                    array(  0,                  1,              false,          JQManagedJob::STATUS_FAILED,    NULL),
+            "normal retry under maxAttempts tries" =>
+                    array(  0,                  2,              false,          JQManagedJob::STATUS_QUEUED,    NULL),
+            "normal mulligan retry" =>
+                    array(  0,                  2,              true,           JQManagedJob::STATUS_QUEUED,    3),
+            "last mulligan retry" =>
+                    array(  $maxMulligans-2,    $maxMulligans,  true,           JQManagedJob::STATUS_QUEUED,    $maxMulligans),
+            "failed -- too many mulligan retries" =>
+                    array(  $maxMulligans-1,    $maxMulligans,  true,           JQManagedJob::STATUS_FAILED,    $maxMulligans),
         );
     }
 
@@ -341,6 +346,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider stateTransitionsDataProvider
+     * @dataProviderTestdox Can go from %1$-11s => %2$11s ? %3$s
      */
     function testStateTransitions($from, $to, $expectedOk)
     {
@@ -418,6 +424,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider failedJobDetectionDataProvider
+     * @testdox JQManagedJob::run() will gracefully detect and fail a job that
      */
     function testFailedJobDetection($errorGeneratorF, $exceptionMessageContains)
     {
@@ -435,13 +442,13 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         // Handles: E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_USER_ERROR | E_RECOVERABLE_ERROR => 4597
         return array(
-            array(
+            "throws an Exception" => array(
                 function() {
                     throw new JobTestException('JobTestException');
                 },
                 'JobTestException'
             ),
-            array(
+            "triggers an E_USER_ERROR" => array(
                 function() {
                     trigger_error("E_USER_ERROR", E_USER_ERROR);
                 },
@@ -452,6 +459,8 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider autoscalingAlgorithmsDataProvider
+     * @testdox Autoscaling algorithm math
+     * @dataProviderTestdox %1$15s: (max=%3$d) %2$5d jobs => %4$5s workers
      */
     function testAutoscalingAlgorithms($algo, $numPending, $maxConcurrency, $expectedValue)
     {
@@ -467,12 +476,14 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
             array('linear',         100,        100,    100),
             array('linear',         101,        100,    100),
             array('linear',         500,        100,    100),
+            array('linear',         500,        200,    200),
             array('halfLinear',     0,          100,    0),
             array('halfLinear',     1,          100,    1),
             array('halfLinear',     2,          100,    1),
             array('halfLinear',     199,        100,    99),
             array('halfLinear',     200,        100,    100),
             array('halfLinear',     201,        100,    100),
+            array('halfLinear',     500,        200,    200),
         );
     }
 }

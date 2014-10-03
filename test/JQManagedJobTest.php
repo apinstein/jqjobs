@@ -4,6 +4,10 @@ require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQManagedJobTest extends PHPUnit_Framework_TestCase
 {
+    /**
+     * @testdox JQManagedJob's "job" property is immutable (cannot change jobs post-construction)
+     * @todo then why do we have a setJob() function?
+     */
     function testExceptionWhenAskedToManageASecondJob()
     {
         $this->setExpectedException('JQManagedJob_AlreadyHasAJobException');
@@ -13,6 +17,7 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob()
      * @dataProvider resolveAsyncToStateDataProvider
      */
     function testResolveAsyncToState($resolvesToState, $expectedState)
@@ -31,12 +36,15 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
     function resolveAsyncToStateDataProvider()
     {
         return array(
-            'Resolving to COMPLETE   completes the job' => array(JQManagedJob::STATUS_COMPLETED,    JQManagedJob::STATUS_COMPLETED),
-            'Resolving to FAILED     fails the job'     => array(JQManagedJob::STATUS_FAILED,       JQManagedJob::STATUS_FAILED),
-            'Resolving to WAIT_ASYNC waits the job'     => array(JQManagedJob::STATUS_WAIT_ASYNC,   JQManagedJob::STATUS_WAIT_ASYNC),
+            'if $job->resolveWaitAsyncJob() returns disposition COMPLETE,   JQManagedJob marks the job complete'      => array(JQManagedJob::STATUS_COMPLETED,    JQManagedJob::STATUS_COMPLETED),
+            'if $job->resolveWaitAsyncJob() returns disposition FAILED,     JQManagedJob marks the job failed'        => array(JQManagedJob::STATUS_FAILED,       JQManagedJob::STATUS_FAILED),
+            'if $job->resolveWaitAsyncJob() returns disposition WAIT_ASYNC  JQManagedJob marks the job wait_async'    => array(JQManagedJob::STATUS_WAIT_ASYNC,   JQManagedJob::STATUS_WAIT_ASYNC),
         );
     }
 
+    /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob($q, $id, $data, true) will mark a job as failed when it throws an exception and convertExceptionToFailure=true
+     */
     function testResolveAsyncExceptionMarksJobFailedWhenConvertExceptionsToFailuresIsEnabled()
     {
         // create a queuestore
@@ -51,6 +59,9 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(JQManagedJob::STATUS_FAILED, $mJob->getStatus());
     }
 
+    /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob($q, $id, $data) will leave a job in wait_async when it throws an exception and convertExceptionToFailure=false (default)
+     */
     function testResolveAsyncExceptionLeavesInWaitAsyncByDefault()
     {
         // create a queuestore
@@ -65,6 +76,9 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), 'SampleAsyncJob_ResolveException');
     }
 
+    /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob() throws JQStore_JobNotFoundException if job no longer exists.
+     */
     function testResolveAsyncJobDoesNotExistThrowsException()
     {
         // create a queuestore
@@ -74,6 +88,9 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         JQManagedJob::resolveWaitAsyncJob($q, 9999, array());
     }
 
+    /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob() wraps the $job->resolveWaitAsyncJob() in a mutex to prevent concurrency errors
+     */
     function testResolveAsyncJobUsesMutex()
     {
         // create a queuestore
@@ -89,6 +106,9 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), array());
     }
 
+    /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob() clears mutex when job is marked failed.
+     */
     function testResolveAsyncJobClearsMutexOnFailure()
     {
         // create a queuestore
@@ -103,6 +123,9 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($mJob, $q->getWithMutex($mJob->getJobId()));
     }
 
+    /**
+     * @testdox JQManagedJob::resolveWaitAsyncJob() clears mutex when job's resolveWaitAsyncJob() throws an Exception.
+     */
     function testResolveAsyncJobClearsMutexOnException()
     {
         // create a queuestore
