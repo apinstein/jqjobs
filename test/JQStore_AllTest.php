@@ -5,6 +5,47 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     // subclasses should configure a JQStore
     protected $jqStore;
 
+    private function setup10SampleJobs()
+    {
+        // Add jobs
+        $jobIdsByIndex = array();
+        foreach (range(1,10) as $i) {
+            $job = $this->jqStore->enqueue(new SampleJob());
+            $jobIdsByIndex[] = $job->getJobId();
+        }
+        return $jobIdsByIndex;
+    }
+
+    function testGetJobWithoutMutex()
+    {
+        $jobsById = $this->setup10SampleJobs();
+
+        foreach ($jobsById as $index => $jobId) {
+            $j = $this->jqStore->get($jobId);
+            $this->assertEquals($jobId, $j->getJobId());
+        }
+    }
+
+    function testGetJobWithMutexLocksJobSuccessfully()
+    {
+        $this->setup10SampleJobs();
+
+        $jobId = 1;
+        $j = $this->jqStore->getWithMutex($jobId);
+        $this->setExpectedException('JQStore_JobIsLockedException');
+        $this->jqStore->getWithMutex($jobId);
+    }
+
+    function testGetJobWithMutexThenClearThenLock()
+    {
+        $this->setup10SampleJobs();
+
+        $jobId = 1;
+        $this->jqStore->getWithMutex($jobId);
+        $this->jqStore->clearMutex($jobId);
+        $this->jqStore->getWithMutex($jobId);
+    }
+
     /**
      * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
      */
@@ -126,7 +167,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         }
         else
         {
-            JQJobsTest::moveJobToStatus($mJob, $currentStatus);
+            JQJobs_TestHelper::moveJobToStatus($mJob, $currentStatus);
         }
         $mJob->save();
 

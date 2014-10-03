@@ -8,65 +8,6 @@ require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQJobsTest extends PHPUnit_Framework_TestCase
 {
-    /**
-     * Utility function to help bootstrap states for testing.
-     */
-    public static function moveJobToStatus($mJob, $targetStatus)
-    {
-        // map on how to bootstrap a job to the "FROM" state
-        $pathForSetup = array(
-            JQManagedJob::STATUS_UNQUEUED       => array(),
-            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
-            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
-            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
-            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
-            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
-        );
-
-        foreach ($pathForSetup[$targetStatus] as $s) {
-            $mJob->setStatus($s);
-        }
-    }
-
-    private function setup10SampleJobs($q)
-    {
-        // Add jobs
-        foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob());
-        }
-    }
-
-    function testGetJobWithoutMutex()
-    {
-        $q = new JQStore_Array();
-        $this->setup10SampleJobs($q);
-
-        foreach (range(1,10) as $i) {
-            $j = $q->get($i);
-        }
-    }
-
-    function testGetJobWithMutexLocksJobSuccessfully()
-    {
-        $q = new JQStore_Array();
-        $this->setup10SampleJobs($q);
-
-        $jobId = 1;
-        $j = $q->getWithMutex($jobId);
-        $this->setExpectedException('JQStore_JobIsLockedException');
-        $q->getWithMutex($jobId);
-    }
-
-    function testGetJobWithMutexThenClearThenLock()
-    {
-        $q = new JQStore_Array();
-        $this->setup10SampleJobs($q);
-
-        $jobId = 1;
-        $q->getWithMutex($jobId);
-        $q->clearMutex($jobId);
-        $q->getWithMutex($jobId);
-    }
 
     /**
      * @testdox Test worker doesn't block when a job returns JQManagedJob::STATUS_WAIT_ASYNC
@@ -276,10 +217,10 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // set up initial condiitions
         $testJob = new JQTestJob(array('maxAttempts' => $maxAttempts));
         $mJob = new JQManagedJob($q, $testJob);
-        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
+        JQJobs_TestHelper::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
         $mJob->setAttemptNumber($previousAttempts);
         $mJob->markJobStarted();
-        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_RUNNING);
+        JQJobs_TestHelper::moveJobToStatus($mJob, JQManagedJob::STATUS_RUNNING);
 
         // fail job
         $mJob->markJobFailed('retry', $mulligan);
@@ -311,7 +252,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // set up initial condiitions
         $testJob = new JQTestJob();
         $mJob = new JQManagedJob($q, $testJob);
-        JQJobsTest::moveJobToStatus($mJob, $initialStatus);
+        JQJobs_TestHelper::moveJobToStatus($mJob, $initialStatus);
 
         if (!$expectedRetryOK)
         {
@@ -378,7 +319,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // set up initial condiitions
         $mJob = new JQManagedJob($q);
-        JQJobsTest::moveJobToStatus($mJob, $from);
+        JQJobs_TestHelper::moveJobToStatus($mJob, $from);
         $this->assertEquals($from, $mJob->getStatus());
 
         $transition = "[" . ($expectedOk ? 'OK' : 'NO') . "] {$from} => {$to}";

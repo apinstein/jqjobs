@@ -17,6 +17,29 @@ else
     require_once 'propel/Propel.php';
 }
 
+class JQJobs_TestHelper
+{
+    /**
+     * Utility function to help bootstrap states for testing.
+     */
+    public static function moveJobToStatus($mJob, $targetStatus)
+    {
+        // map on how to bootstrap a job to the "FROM" state
+        $pathForSetup = array(
+            JQManagedJob::STATUS_UNQUEUED       => array(),
+            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
+            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
+            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
+            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
+            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
+        );
+
+        foreach ($pathForSetup[$targetStatus] as $s) {
+            $mJob->setStatus($s);
+        }
+    }
+}
+
 Propel::init(dirname(__FILE__) . "/../lib/propel/jqjobs-conf.php");
 
 /************** JQStore_Propel Genterator (TEST DB) ********************/

@@ -50,7 +50,7 @@ class JQStore_PropelTest extends JQStore_AllTest
         $this->assertEquals(0, $q->count('test'));
     }
 
-    private function setup10SampleJobs()
+    private function setup10QuietSimpleJobs()
     {
         $jobIdsByIndex = array();
         foreach (range(1,10) as $i) {
@@ -62,7 +62,7 @@ class JQStore_PropelTest extends JQStore_AllTest
 
     function testGetJobWithMutexLocksJobSuccessfully()
     {
-        $jobIdsByIndex = $this->setup10SampleJobs();
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
         $jobId = current($jobIdsByIndex);
         $j = $this->jqStore->getWithMutex($jobId);
         $this->setExpectedException('JQStore_JobIsLockedException');
@@ -71,7 +71,7 @@ class JQStore_PropelTest extends JQStore_AllTest
 
     function testGetJobWithMutexThenClearThenLock()
     {
-        $jobIdsByIndex = $this->setup10SampleJobs();
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
         $jobId = current($jobIdsByIndex);
         $this->jqStore->getWithMutex($jobId);
         $this->jqStore->clearMutex($jobId);
