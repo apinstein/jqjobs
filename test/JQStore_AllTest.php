@@ -89,7 +89,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
      * @dataProvider jobIsPastMaxRuntimeSecondsDataProvider
      * @testdox JQManagedJob::isPastMaxRuntimeSeconds()
      */
-    function testJobIsPastMaxRuntimeSeconds($maxRuntimeSeconds, $currentStatus, $startDts, $expectedResult, $description)
+    function testJobIsPastMaxRuntimeSeconds($maxRuntimeSeconds, $currentStatus, $startDts, $expectedResult)
     {
         $q = $this->jqStore;
         $mJob = new JQManagedJob($q);
@@ -98,13 +98,13 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
             'maxRuntimeSeconds' => $maxRuntimeSeconds,
             'startDts'          => new DateTime($startDts),
         ));
-        $this->assertEquals($expectedResult, $mJob->isPastMaxRuntimeSeconds(), $description);
+        $this->assertEquals($expectedResult, $mJob->isPastMaxRuntimeSeconds());
     }
 
     /**
      * @dataProvider jobIsPastMaxRuntimeSecondsDataProvider
      */
-    function testDetectHungJobs($maxRuntimeSeconds, $currentStatus, $startDts, $expectedMulligan, $description)
+    function testDetectHungJobs($maxRuntimeSeconds, $currentStatus, $startDts, $expectedMulligan)
     {
         $q = $this->jqStore;
         $mJob = $q->enqueue(new QuietSimpleJob(1, array('maxRuntimeSeconds' => $maxRuntimeSeconds)));
