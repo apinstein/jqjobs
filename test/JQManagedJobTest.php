@@ -17,6 +17,42 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @dataProvider resolveAsyncToStateThrowsIfJobNotWaitAsync
+     * @testdox JQManagedJob::resolveWaitAsyncJob() 
+     *
+     */
+    function testResolveAsyncToStateThrowsIfJobNotWaitAsync($currentState, $expectedOk)
+    {
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        $testJob = new SampleAsyncJob($this);
+        $mJob = $q->enqueue($testJob);
+        $mJob->markJobStarted();
+        JQJobs_TestHelper::moveJobToStatus($mJob, $currentState);
+
+        if (!$expectedOk)
+        {
+            $this->setExpectedException('JQManagedJob_InvalidStateException');
+        }
+        JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), JQManagedJob::STATUS_COMPLETED);
+        if ($expectedOk)
+        {
+            $this->assertEquals(JQManagedJob::STATUS_COMPLETED, $mJob->getStatus());
+        }
+    }
+    function resolveAsyncToStateThrowsIfJobNotWaitAsync()
+    {
+        return array(
+            "will throw JQManagedJob_InvalidStateException if job is STATUS_QUEUED"     => array(JQManagedJob::STATUS_QUEUED,       false),
+            "will throw JQManagedJob_InvalidStateException if job is STATUS_RUNNING"    => array(JQManagedJob::STATUS_RUNNING,      false),
+            "will run if job is STATUS_WAIT_ASYNC"                                      => array(JQManagedJob::STATUS_WAIT_ASYNC,   true),
+            "will throw JQManagedJob_InvalidStateException if job is STATUS_COMPLETED"  => array(JQManagedJob::STATUS_COMPLETED,    false),
+            "will throw JQManagedJob_InvalidStateException if job is STATUS_FAILED"     => array(JQManagedJob::STATUS_FAILED,       false),
+        );
+    }
+
+    /**
      * @testdox JQManagedJob::resolveWaitAsyncJob()
      * @dataProvider resolveAsyncToStateDataProvider
      */

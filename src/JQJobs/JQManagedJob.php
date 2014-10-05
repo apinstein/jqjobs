@@ -1,8 +1,9 @@
 <?php
 // vim: set expandtab tabstop=4 shiftwidth=4:
 
-class JQManagedJob_AlreadyHasAJobException extends Exception { }
-class JQManagedJob_InvalidStateChangeException extends Exception { }
+class JQManagedJob_AlreadyHasAJobException extends Exception {}
+class JQManagedJob_InvalidStateChangeException extends Exception {}
+class JQManagedJob_InvalidStateException extends Exception {}
 
 /**
  * JQManagedJob is the core unit of work for the Job system.
@@ -430,6 +431,10 @@ final class JQManagedJob
     {
         // load job WITH MUTEX
         $mJob = $q->getWithMutex($jobId);
+        if ($mJob->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
+        {
+            throw new JQManagedJob_InvalidStateException;
+        }
 
         // wrap so we can "finally" the clearMutex()
         try {
