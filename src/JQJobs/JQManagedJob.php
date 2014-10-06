@@ -466,7 +466,7 @@ final class JQManagedJob
                     $mJob->markJobFailed($err);
                     break;
                 default:
-                    throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->run(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
+                    throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->resolveWaitAsyncJob(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
             }
 
             $q->clearMutex($jobId);
