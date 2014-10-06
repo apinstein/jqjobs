@@ -3,7 +3,19 @@
 
 class JQManagedJob_AlreadyHasAJobException extends Exception {}
 class JQManagedJob_InvalidStateChangeException extends Exception {}
-class JQManagedJob_InvalidStateException extends Exception {}
+class JQManagedJob_InvalidStateException extends Exception {
+    private $jobState;
+
+    public function __construct($jobState)
+    {
+        $this->jobState = $jobState;
+    }
+
+    public function getJobState()
+    {
+        return $this->jobState;
+    }
+}
 
 /**
  * JQManagedJob is the core unit of work for the Job system.
@@ -425,7 +437,7 @@ final class JQManagedJob
      *                Default FALSE.
      * @throws object JQStore_JobNotFoundException
      * @throws object Exception Unhandled exceptions.
-     * @return void
+     * @return string the final disposition of the resolving job
      */
     public static function resolveWaitAsyncJob(JQStore $q, $jobId, $data, $convertExceptionToFailure = false)
     {
@@ -433,7 +445,7 @@ final class JQManagedJob
         $mJob = $q->getWithMutex($jobId);
         if ($mJob->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
         {
-            throw new JQManagedJob_InvalidStateException;
+            throw new JQManagedJob_InvalidStateException($mJob->getStatus());
         }
 
         // wrap so we can "finally" the clearMutex()
@@ -474,6 +486,8 @@ final class JQManagedJob
             $q->clearMutex($jobId);
             throw $e;
         }
+
+        return $disposition;
     }
 
     /**
