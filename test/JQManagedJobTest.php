@@ -185,4 +185,23 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         }
         $this->fail('should never get here');
     }
+
+    function testResolveAsyncJobClearMutexWhenNotInWaitAsync()
+    {
+        // create a queuestore
+        $q = new JQStore_Array();
+
+        $mJob = $q->enqueue(new SampleAsyncJob(NULL));
+        $mJob->markJobStarted();
+        $mJob->markJobFailed();
+        $this->assertEquals(JQManagedJob::STATUS_FAILED, $mJob->getStatus());
+
+        try {
+            JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), NULL);
+        } catch (JQManagedJob_InvalidStateException $e) {
+            $this->assertEquals($mJob, $q->getWithMutex($mJob->getJobId()));
+            return;
+        }
+        $this->fail('should never get here');        
+    }
 }
