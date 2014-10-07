@@ -2,6 +2,10 @@
     convertErrorsToExceptions="false"
     convertNoticesToExceptions="false"
     convertWarningsToExceptions="false"
+    backupGlobals="false"
+    backupStaticAttributes="false"
+    colors="true"
+    cacheTokens="false"
     bootstrap="test/bootstrap.php"
     >
     <testsuites>
@@ -9,4 +13,10 @@
             <directory>test</directory>
         </testsuite>
     </testsuites>
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">lib</directory>
+            <directory suffix=".php">src</directory>
+        </whitelist>
+    </filter>
 </phpunit>

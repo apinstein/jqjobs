@@ -5,19 +5,53 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     // subclasses should configure a JQStore
     protected $jqStore;
 
-    /**
-     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
-     */
-    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
+    private function setup10SampleJobs()
     {
-        $coalesceId = 1234;
+        // Add jobs
+        $jobIdsByIndex = array();
+        foreach (range(1,10) as $i) {
+            $job = $this->jqStore->enqueue(new SampleJob());
+            $jobIdsByIndex[] = $job->getJobId();
+        }
+        return $jobIdsByIndex;
+    }
 
-        $firstJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
-        $this->assertEquals(1, $this->jqStore->count('test'));
+    private function setup10QuietSimpleJobs()
+    {
+        $jobIdsByIndex = array();
+        foreach (range(1,10) as $i) {
+            $job = $this->jqStore->enqueue(new QuietSimpleJob($i));
+            $jobIdsByIndex[] = $job->getJobId();
+        }
+        return $jobIdsByIndex;
+    }
 
-        $secondJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
-        $this->assertEquals(1, $this->jqStore->count('test'));
-        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
+    function testGetJobWithoutMutex()
+    {
+        $jobsById = $this->setup10SampleJobs();
+
+        foreach ($jobsById as $index => $jobId) {
+            $j = $this->jqStore->get($jobId);
+            $this->assertEquals($jobId, $j->getJobId());
+        }
+    }
+
+    function testGetJobWithMutexLocksJobSuccessfully()
+    {
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
+        $jobId = current($jobIdsByIndex);
+        $j = $this->jqStore->getWithMutex($jobId);
+        $this->setExpectedException('JQStore_JobIsLockedException');
+        $this->jqStore->getWithMutex($jobId);
+    }
+
+    function testGetJobWithMutexThenClearThenLock()
+    {
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
+        $jobId = current($jobIdsByIndex);
+        $this->jqStore->getWithMutex($jobId);
+        $this->jqStore->clearMutex($jobId);
+        $this->jqStore->getWithMutex($jobId);
     }
 
     function testCountJobs()
@@ -52,38 +86,10 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @testdox Test Basic JQJobs Processing
-     */
-    function testJQJobs()
-    {
-        // create a queuestore
-        $q = new JQStore_Array();
-
-        $this->assertEquals(0, $q->count('test'));
-
-        // Add jobs
-        foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob());
-        }
-
-        $this->assertEquals(10, $q->count());
-        $this->assertEquals(10, $q->count('test'));
-        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
-
-        SampleJobCounter::reset();
-
-        // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
-        $w->start();
-
-        $this->assertEquals(10, SampleJobCounter::count());
-        $this->assertEquals(0, $q->count('test'));
-    }
-
-    /**
      * @dataProvider jobIsPastMaxRuntimeSecondsDataProvider
+     * @testdox JQManagedJob::isPastMaxRuntimeSeconds()
      */
-    function testJobIsPastMaxRuntimeSeconds($maxRuntimeSeconds, $currentStatus, $startDts, $expectedResult, $description)
+    function testJobIsPastMaxRuntimeSeconds($maxRuntimeSeconds, $currentStatus, $startDts, $expectedResult)
     {
         $q = $this->jqStore;
         $mJob = new JQManagedJob($q);
@@ -92,13 +98,13 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
             'maxRuntimeSeconds' => $maxRuntimeSeconds,
             'startDts'          => new DateTime($startDts),
         ));
-        $this->assertEquals($expectedResult, $mJob->isPastMaxRuntimeSeconds(), $description);
+        $this->assertEquals($expectedResult, $mJob->isPastMaxRuntimeSeconds());
     }
 
     /**
      * @dataProvider jobIsPastMaxRuntimeSecondsDataProvider
      */
-    function testDetectHungJobs($maxRuntimeSeconds, $currentStatus, $startDts, $expectedMulligan, $description)
+    function testDetectHungJobs($maxRuntimeSeconds, $currentStatus, $startDts, $expectedMulligan)
     {
         $q = $this->jqStore;
         $mJob = $q->enqueue(new QuietSimpleJob(1, array('maxRuntimeSeconds' => $maxRuntimeSeconds)));
@@ -108,7 +114,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         }
         else
         {
-            JQJobsTest::moveJobToStatus($mJob, $currentStatus);
+            JQJobs_TestHelper::moveJobToStatus($mJob, $currentStatus);
         }
         $mJob->save();
 
@@ -137,18 +143,108 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function jobIsPastMaxRuntimeSecondsDataProvider()
     {
         return array(
-            //    maxRuntimeSeconds     current state                       start dts (relative to now)         expectedResult    description
-            array(NULL,                 JQManagedJob::STATUS_RUNNING,       '-1 year',                          false,            'maxRuntimeSeconds of NULL means never expire'),
-            #array(10,                   JQManagedJob::STATUS_UNQUEUED,      '-1 year',                          false,            'maxRuntimeSeconds does not apply to STATUS_UNQUEUED'),
-            array(10,                   JQManagedJob::STATUS_QUEUED,        '-1 year',                          false,            'maxRuntimeSeconds does not apply to STATUS_QUEUED'),
-            array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-1 year',                          false,            'maxRuntimeSeconds does not apply to STATUS_WAIT_ASYNC'),
-            array(10,                   JQManagedJob::STATUS_COMPLETED,     '-1 year',                          false,            'maxRuntimeSeconds does not apply to STATUS_COMPLETED'),
-            array(10,                   JQManagedJob::STATUS_FAILED,        '-1 year',                          false,            'maxRuntimeSeconds does not apply to STATUS_FAILED'),
-            array(10,                   JQManagedJob::STATUS_RUNNING,       '-1 year',                          true,             'very expired job'),
-            array(10,                   JQManagedJob::STATUS_RUNNING,       '-11 seconds',                      true,             'expired by 1 second'),
-            array(10,                   JQManagedJob::STATUS_RUNNING,       '-10 seconds',                      false,            'at expiration'),
-            array(10,                   JQManagedJob::STATUS_RUNNING,       '-9 seconds',                       false,            'before expiration'),
+            //            maxRuntimeSeconds     current state                       start dts (relative to now)         expectedResult
+            'maxRuntimeSeconds of NULL means never expire' =>
+                    array(NULL,                 JQManagedJob::STATUS_RUNNING,       '-1 year',                          false),
+            #'maxRuntimeSeconds does not apply to STATUS_UNQUEUED' => 
+            #array(10,                   JQManagedJob::STATUS_UNQUEUED,      '-1 year',                          false),
+            'maxRuntimeSeconds does not apply to STATUS_QUEUED' =>
+                    array(10,                   JQManagedJob::STATUS_QUEUED,        '-1 year',                          false),
+            'maxRuntimeSeconds does not apply to STATUS_WAIT_ASYNC' =>
+                    array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-1 year',                          false),
+            'maxRuntimeSeconds does not apply to STATUS_COMPLETED' =>
+                    array(10,                   JQManagedJob::STATUS_COMPLETED,     '-1 year',                          false),
+            'maxRuntimeSeconds does not apply to STATUS_FAILED' => 
+                    array(10,                   JQManagedJob::STATUS_FAILED,        '-1 year',                          false),
+            'very expired job is past maxRuntimeSeconds' => 
+                    array(10,                   JQManagedJob::STATUS_RUNNING,       '-1 year',                          true),
+            'expired by 1 second is past maxRuntimeSeconds' => 
+                    array(10,                   JQManagedJob::STATUS_RUNNING,       '-11 seconds',                      true),
+            'at expiration is NOT past maxRuntimeSeconds' => 
+                    array(10,                   JQManagedJob::STATUS_RUNNING,       '-10 seconds',                      false),
+            'before expiration is NOT past maxRuntimeSeconds' => 
+                    array(10,                   JQManagedJob::STATUS_RUNNING,       '-9 seconds',                       false),
         );
     }
 
+
+    /**
+     * @testdox get() throws JQStore_JobNotFoundException if job cannot be found
+     */
+    function testGetNotFound()
+    {
+        $this->setExpectedException('JQStore_JobNotFoundException');
+        $this->jqStore->get(9999);
+    }
+
+    /**
+     * @testdox getWithMutex() throws JQStore_JobNotFoundException if job cannot be found
+     */
+    function testGetMutexNotFound()
+    {
+        $this->setExpectedException('JQStore_JobNotFoundException');
+        $this->jqStore->getWithMutex(9999);
+    }
+
+    /**
+     * @testdox Test Basic JQJobs Processing using JQStore_Propel
+     */
+    function testJQJobs()
+    {
+        $q = $this->jqStore;
+        $this->assertEquals(0, $q->count('test'));
+
+        // Add jobs
+        foreach (range(1,10) as $i) {
+            $q->enqueue(new QuietSimpleJob($i));
+        }
+
+        $this->assertEquals(10, $q->count());
+        $this->assertEquals(10, $q->count('test'));
+        $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(10, $w->jobsProcessed());
+        $this->assertEquals(0, $q->count('test'));
+    }
+
+    /**
+     * @testdox JQJobs does not queue another job if there is an existing coalesceId. The original job is returned from JQStore::enqueue()
+     */
+    function testCoalescingJobsCoalesceEnqueueingOfDuplicateJobs()
+    {
+        $coalesceId = 1234;
+
+        $firstJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(1, $this->jqStore->count('test'));
+
+        $secondJobEnqueued = $this->jqStore->enqueue(new SampleCoalescingJob($coalesceId));
+        $this->assertEquals(1, $this->jqStore->count('test'));
+        $this->assertEquals($firstJobEnqueued, $secondJobEnqueued);
+    }
+
+    function testJobsAreRetrieveableByCoalesceId()
+    {
+        // Add some jobs
+        $coalesceId  = 'foo';
+        $insertedJob = new SampleCoalescingJob($coalesceId);
+        $this->jqStore->enqueue($insertedJob);
+
+        // Make sure we have a job enqueued
+        // Helpful for debugging...
+        $this->assertEquals(1, $this->jqStore->count('test'));
+        $this->assertEquals($coalesceId, $insertedJob->coalesceId());
+
+        // Make sure the job exists for the coalesceId
+        $retrievedJob = $this->jqStore->getByCoalesceId($coalesceId)->getJob();
+        $this->assertEquals($insertedJob, $retrievedJob);
+    }
+
+    function testGetByCoalesceIdWhenNoJobExists()
+    {
+        $this->assertNull($this->jqStore->getByCoalesceId('doesnotexist'));
+    }
 }

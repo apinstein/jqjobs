@@ -71,7 +71,7 @@ interface JQStore
      *
      * @param string JobId.
      * @return object JQStoreManagedJob, or NULL if not found.
-     * @throws object Exception
+     * @throws object JQStore_JobNotFoundException
      */
     function get($jobId);
 
@@ -83,6 +83,7 @@ interface JQStore
      * @param string JobId.
      * @return object JQStoreManagedJob, or NULL if not found.
      * @throws JQStore_JobIsLockedException if lock cannot be obtained.
+     * @throws object JQStore_JobNotFoundException
      */
     function getWithMutex($jobId);
 

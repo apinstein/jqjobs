@@ -21,8 +21,9 @@ Features
 * Utility class JQDelayedJob makes it trivial to run php code after the script exits. This is a great way to defer things like logging to after the request is handled for a more performant application.
 * Optional jitter for high-concurrency situations
 * Robust signal handling, including graceful shutdown on SIGTERM
-* Robust autoscaler with Heroku driver.
+* Robust autoscaler with Heroku and AWS (Auto-scaling groups) drivers.
 * Hung jobs detection (will be re-queued).
+* Built-in support for ASYNC jobs (jobs where work is sent "offsite" and will be closed out asyncronously via JQManagedJob::STATUS_WAIT_ASYNC and JQManagedJob::resolveWaitAsyncJob().
 
 Roadmap
 * Queue admin tool (cli & gui)

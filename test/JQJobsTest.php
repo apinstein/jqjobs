@@ -8,65 +8,6 @@ require_once dirname(__FILE__) . '/TestCommon.php';
 
 class JQJobsTest extends PHPUnit_Framework_TestCase
 {
-    /**
-     * Utility function to help bootstrap states for testing.
-     */
-    public static function moveJobToStatus($mJob, $targetStatus)
-    {
-        // map on how to bootstrap a job to the "FROM" state
-        $pathForSetup = array(
-            JQManagedJob::STATUS_UNQUEUED       => array(),
-            JQManagedJob::STATUS_QUEUED         => array(JQManagedJob::STATUS_QUEUED),
-            JQManagedJob::STATUS_RUNNING        => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING),
-            JQManagedJob::STATUS_WAIT_ASYNC     => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_WAIT_ASYNC),
-            JQManagedJob::STATUS_COMPLETED      => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_COMPLETED),
-            JQManagedJob::STATUS_FAILED         => array(JQManagedJob::STATUS_QUEUED, JQManagedJob::STATUS_RUNNING, JQManagedJob::STATUS_FAILED),
-        );
-
-        foreach ($pathForSetup[$targetStatus] as $s) {
-            $mJob->setStatus($s);
-        }
-    }
-
-    private function setup10SampleJobs($q)
-    {
-        // Add jobs
-        foreach (range(1,10) as $i) {
-            $q->enqueue(new SampleJob());
-        }
-    }
-
-    function testGetJobWithoutMutex()
-    {
-        $q = new JQStore_Array();
-        $this->setup10SampleJobs($q);
-
-        foreach (range(1,10) as $i) {
-            $j = $q->get($i);
-        }
-    }
-
-    function testGetJobWithMutexLocksJobSuccessfully()
-    {
-        $q = new JQStore_Array();
-        $this->setup10SampleJobs($q);
-
-        $jobId = 1;
-        $j = $q->getWithMutex($jobId);
-        $this->setExpectedException('JQStore_JobIsLockedException');
-        $q->getWithMutex($jobId);
-    }
-
-    function testGetJobWithMutexThenClearThenLock()
-    {
-        $q = new JQStore_Array();
-        $this->setup10SampleJobs($q);
-
-        $jobId = 1;
-        $q->getWithMutex($jobId);
-        $q->clearMutex($jobId);
-        $q->getWithMutex($jobId);
-    }
 
     /**
      * @testdox Test worker doesn't block when a job returns JQManagedJob::STATUS_WAIT_ASYNC
@@ -88,7 +29,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_QUEUED));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, $q->count('test', JQManagedJob::STATUS_WAIT_ASYNC));
@@ -108,7 +49,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         }
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(0, $q->count('test'), "JQJobs didn't seem to automatically remove completed jobs.");
@@ -128,13 +69,14 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         }
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, $q->count('test'), "JQJobs didn't seem to leave intact failed jobs.");
     }
 
     /**
+     * ManagedJobTest? WorkerTest?
      * @testdox Test JQJobs catches fatal PHP errors during job execution and marks job as failed
      */
     function testJqJobsCatchesPHPErrorDuringJob()
@@ -144,7 +86,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q->enqueue(new SampleFailJob());
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(0, $q->count('test', 'queued'));
@@ -152,6 +94,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * WorkerTest?
      * @testdox Worker option exitAfterNJobs: NULL means never exit, positive integer will exit after N jobs
      */
     function testWorkerOptionExitAfterNJobs()
@@ -173,21 +116,21 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         SampleJobCounter::reset();
 
         // Start a worker to run 1 job
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 1, 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 1, 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(1, SampleJobCounter::count());
         $this->assertEquals(9, $q->count('test'));
 
         // Start a worker to run 2 jobs
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 2, 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => 2, 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(3, SampleJobCounter::count());
         $this->assertEquals(7, $q->count('test'));
 
         // Start a worker to run remaining
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => NULL, 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitAfterNJobs' => NULL, 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(10, SampleJobCounter::count());
@@ -247,6 +190,34 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($insertedJob, $retrievedJob);
     }
 
+    /**
+     * @dataProvider restartJobAttributeDataProvider
+     */
+    function testRestartJob($attr, $expectedVal)
+    {
+        // setup by failing a job...
+        $q = new JQStore_Array();
+        $mJob = $q->enqueue(new SampleFailJob());
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+        $this->assertNotEquals($attr, $expectedVal, "failed job should not already have expected value for state.");
+
+        // restart and verify
+        $mJob->restart();
+        $f = "get{$attr}";
+        $this->assertEquals($expectedVal, $mJob->$f(), "restart didn't reset attribute");
+    }
+    function restartJobAttributeDataProvider()
+    {
+        return array(
+            'restart() sets attemptNumber to 0' => array('attemptNumber',   0),
+            'restart() sets startDts to NULL'   => array('startDts',        NULL),
+            'restart() sets endDts to NULL'     => array('endDts',          NULL),
+            'restart() sets status to queued'   => array('status',          JQManagedJob::STATUS_QUEUED),
+        );
+    }
+
+    // ManagedJobTest?
     function testJobsAutoRetryOnFailure()
     {
         // create a queuestore
@@ -255,7 +226,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $mJob = $q->enqueue(new SampleFailJob(array('maxAttempts' => $maxAttempts)));
 
         // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true));
+        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
         $this->assertEquals(0, $q->count('test', 'queued'));
@@ -266,7 +237,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     /**
      * @dataProvider retryDataProvider
      */
-    function testRetry($previousAttempts, $maxAttempts, $mulligan, $expectedStatus, $expectedMaxAttempts, $description)
+    function testRetry($previousAttempts, $maxAttempts, $mulligan, $expectedStatus, $expectedMaxAttempts)
     {
         if ($expectedMaxAttempts === NULL) $expectedMaxAttempts = $maxAttempts;
 
@@ -276,10 +247,10 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // set up initial condiitions
         $testJob = new JQTestJob(array('maxAttempts' => $maxAttempts));
         $mJob = new JQManagedJob($q, $testJob);
-        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
+        JQJobs_TestHelper::moveJobToStatus($mJob, JQManagedJob::STATUS_QUEUED);
         $mJob->setAttemptNumber($previousAttempts);
         $mJob->markJobStarted();
-        JQJobsTest::moveJobToStatus($mJob, JQManagedJob::STATUS_RUNNING);
+        JQJobs_TestHelper::moveJobToStatus($mJob, JQManagedJob::STATUS_RUNNING);
 
         // fail job
         $mJob->markJobFailed('retry', $mulligan);
@@ -291,12 +262,17 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         $maxMulligans = JQManagedJob::MULLIGAN_MAX_ATTEMPTS;
         return array(
-            //      previousAttempts    maxAttempts     mulligan        expectedStatus                  expectedMaxAttempts     description
-            array(  0,                  1,              false,          JQManagedJob::STATUS_FAILED,    NULL,                   "normal failure after maxAttempts reached"),
-            array(  0,                  2,              false,          JQManagedJob::STATUS_QUEUED,    NULL,                   "normal retry under maxAttempts tries"),
-            array(  0,                  2,              true,           JQManagedJob::STATUS_QUEUED,    3,                      "normal mulligan retry"),
-            array(  $maxMulligans-2,    $maxMulligans,  true,           JQManagedJob::STATUS_QUEUED,    $maxMulligans,          "last mulligan retry"),
-            array(  $maxMulligans-1,    $maxMulligans,  true,           JQManagedJob::STATUS_FAILED,    $maxMulligans,          "failed -- too many mulligan retries"),
+            //              previousAttempts    maxAttempts     mulligan        expectedStatus                  expectedMaxAttempts
+            "normal failure after maxAttempts reached" =>
+                    array(  0,                  1,              false,          JQManagedJob::STATUS_FAILED,    NULL),
+            "normal retry under maxAttempts tries" =>
+                    array(  0,                  2,              false,          JQManagedJob::STATUS_QUEUED,    NULL),
+            "normal mulligan retry" =>
+                    array(  0,                  2,              true,           JQManagedJob::STATUS_QUEUED,    3),
+            "last mulligan retry" =>
+                    array(  $maxMulligans-2,    $maxMulligans,  true,           JQManagedJob::STATUS_QUEUED,    $maxMulligans),
+            "failed -- too many mulligan retries" =>
+                    array(  $maxMulligans-1,    $maxMulligans,  true,           JQManagedJob::STATUS_FAILED,    $maxMulligans),
         );
     }
 
@@ -311,7 +287,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         // set up initial condiitions
         $testJob = new JQTestJob();
         $mJob = new JQManagedJob($q, $testJob);
-        JQJobsTest::moveJobToStatus($mJob, $initialStatus);
+        JQJobs_TestHelper::moveJobToStatus($mJob, $initialStatus);
 
         if (!$expectedRetryOK)
         {
@@ -345,7 +321,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q = new JQStore_Array();
 
         // test no adjustment uses default
-        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true)));
+        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false)));
         $wMock->expects($this->never())
                             ->method('adjustPriority')
                             ;
@@ -360,7 +336,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
         $q = new JQStore_Array();
 
         // test with adjustment
-        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('adjustPriority' => 10, 'queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true)));
+        $wMock = $this->getMock('JQWorker', array('adjustPriority'), array($q, array('adjustPriority' => 10, 'queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false)));
         $wMock->expects($this->once())
                             ->method('adjustPriority')
                             ->with(10)
@@ -370,6 +346,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider stateTransitionsDataProvider
+     * @dataProviderTestdox Can go from %1$-11s => %2$11s ? %3$s
      */
     function testStateTransitions($from, $to, $expectedOk)
     {
@@ -378,7 +355,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // set up initial condiitions
         $mJob = new JQManagedJob($q);
-        JQJobsTest::moveJobToStatus($mJob, $from);
+        JQJobs_TestHelper::moveJobToStatus($mJob, $from);
         $this->assertEquals($from, $mJob->getStatus());
 
         $transition = "[" . ($expectedOk ? 'OK' : 'NO') . "] {$from} => {$to}";
@@ -447,6 +424,7 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider failedJobDetectionDataProvider
+     * @testdox JQManagedJob::run() will gracefully detect and fail a job that
      */
     function testFailedJobDetection($errorGeneratorF, $exceptionMessageContains)
     {
@@ -464,13 +442,13 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     {
         // Handles: E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_USER_ERROR | E_RECOVERABLE_ERROR => 4597
         return array(
-            array(
+            "throws an Exception" => array(
                 function() {
                     throw new JobTestException('JobTestException');
                 },
                 'JobTestException'
             ),
-            array(
+            "triggers an E_USER_ERROR" => array(
                 function() {
                     trigger_error("E_USER_ERROR", E_USER_ERROR);
                 },
@@ -481,6 +459,8 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider autoscalingAlgorithmsDataProvider
+     * @testdox Autoscaling algorithm math
+     * @dataProviderTestdox %1$15s: (max=%3$d) %2$5d jobs => %4$5s workers
      */
     function testAutoscalingAlgorithms($algo, $numPending, $maxConcurrency, $expectedValue)
     {
@@ -496,12 +476,14 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
             array('linear',         100,        100,    100),
             array('linear',         101,        100,    100),
             array('linear',         500,        100,    100),
+            array('linear',         500,        200,    200),
             array('halfLinear',     0,          100,    0),
             array('halfLinear',     1,          100,    1),
             array('halfLinear',     2,          100,    1),
             array('halfLinear',     199,        100,    99),
             array('halfLinear',     200,        100,    100),
             array('halfLinear',     201,        100,    100),
+            array('halfLinear',     500,        200,    200),
         );
     }
 }

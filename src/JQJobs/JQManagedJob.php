@@ -1,8 +1,21 @@
 <?php
 // vim: set expandtab tabstop=4 shiftwidth=4:
 
-class JQManagedJob_AlreadyHasAJobException extends Exception { }
-class JQManagedJob_InvalidStateChangeException extends Exception { }
+class JQManagedJob_AlreadyHasAJobException extends Exception {}
+class JQManagedJob_InvalidStateChangeException extends Exception {}
+class JQManagedJob_InvalidStateException extends Exception {
+    private $jobStatus;
+
+    public function __construct($jobStatus)
+    {
+        $this->jobStatus = $jobStatus;
+    }
+
+    public function getJobStatus()
+    {
+        return $this->jobStatus;
+    }
+}
 
 /**
  * JQManagedJob is the core unit of work for the Job system.
@@ -413,6 +426,68 @@ final class JQManagedJob
     {
         $this->setStatus(JQManagedJob::STATUS_WAIT_ASYNC);
         $this->save();
+    }
+
+    /**
+     * @param object JQStore
+     * @param string The jobId
+     * @param mixed The data/payload to report to the job's resolveWaitAsyncJob() method..
+     * @param boolean TRUE to convert exceptions thrown during resolveWaitAsyncJob() to FAILURE (mark job failed).
+     *                FALSE to re-throw exceptions. Useful for a webhook to re-try Exceptional failures. 
+     *                Default FALSE.
+     * @throws object JQStore_JobNotFoundException
+     * @throws object Exception Unhandled exceptions.
+     * @return string the final disposition of the resolving job
+     */
+    public static function resolveWaitAsyncJob(JQStore $q, $jobId, $data, $convertExceptionToFailure = false)
+    {
+        // load job WITH MUTEX
+        $mJob = $q->getWithMutex($jobId);
+        if ($mJob->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
+        {
+            throw new JQManagedJob_InvalidStateException($mJob->getStatus());
+        }
+
+        // wrap so we can "finally" the clearMutex()
+        try {
+            // allow the job to process the async data update
+            $err = NULL;
+            try {
+                $disposition = ErrorManager::wrap(array($mJob->getJob(), 'resolveWaitAsyncJob'), array($data), array($mJob, 'errorHandlerFailJob'));
+            } catch (Exception $e) {
+                if ($convertExceptionToFailure)
+                {
+                    $err = $e->getMessage();
+                    $disposition = self::STATUS_FAILED;
+                }
+                else
+                {
+                    throw $e;
+                }
+            }
+
+            // move job to disposition returned by resolveWaitAsyncJob
+            switch ($disposition) {
+                case self::STATUS_COMPLETED:
+                    $mJob->markJobComplete();
+                    break;
+                case self::STATUS_WAIT_ASYNC:
+                    $mJob->markJobWaitAsync();
+                    break;
+                case self::STATUS_FAILED:
+                    $mJob->markJobFailed($err);
+                    break;
+                default:
+                    throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->resolveWaitAsyncJob(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
+            }
+
+            $q->clearMutex($jobId);
+        } catch (Exception $e) {
+            $q->clearMutex($jobId);
+            throw $e;
+        }
+
+        return $disposition;
     }
 
     /**
