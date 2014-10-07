@@ -4,16 +4,16 @@
 class JQManagedJob_AlreadyHasAJobException extends Exception {}
 class JQManagedJob_InvalidStateChangeException extends Exception {}
 class JQManagedJob_InvalidStateException extends Exception {
-    private $jobState;
+    private $jobStatus;
 
-    public function __construct($jobState)
+    public function __construct($jobStatus)
     {
-        $this->jobState = $jobState;
+        $this->jobStatus = $jobStatus;
     }
 
-    public function getJobState()
+    public function getJobStatus()
     {
-        return $this->jobState;
+        return $this->jobStatus;
     }
 }
 

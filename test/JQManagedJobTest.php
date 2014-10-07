@@ -31,14 +31,19 @@ class JQManagedJobTest extends PHPUnit_Framework_TestCase
         $mJob->markJobStarted();
         JQJobs_TestHelper::moveJobToStatus($mJob, $currentState);
 
-        if (!$expectedOk)
-        {
-            $this->setExpectedException('JQManagedJob_InvalidStateException');
-        }
-        JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), JQManagedJob::STATUS_COMPLETED);
         if ($expectedOk)
         {
+            JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), JQManagedJob::STATUS_COMPLETED);
             $this->assertEquals(JQManagedJob::STATUS_COMPLETED, $mJob->getStatus());
+        }
+        else
+        {
+            try {
+                JQManagedJob::resolveWaitAsyncJob($q, $mJob->getJobId(), JQManagedJob::STATUS_COMPLETED);
+                $this->fail("Expected JQManagedJob_InvalidStateException to be thrown.");
+            } catch (JQManagedJob_InvalidStateException $e) {
+                $this->assertEquals($currentState, $e->getJobStatus());
+            }
         }
     }
     function resolveAsyncToStateThrowsIfJobNotWaitAsync()
