@@ -443,13 +443,14 @@ final class JQManagedJob
     {
         // load job WITH MUTEX
         $mJob = $q->getWithMutex($jobId);
-        if ($mJob->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
-        {
-            throw new JQManagedJob_InvalidStateException($mJob->getStatus());
-        }
 
         // wrap so we can "finally" the clearMutex()
         try {
+            if ($mJob->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
+            {
+                throw new JQManagedJob_InvalidStateException($mJob->getStatus());
+            }
+
             // allow the job to process the async data update
             $err = NULL;
             try {
