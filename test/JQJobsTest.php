@@ -76,24 +76,6 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * ManagedJobTest? WorkerTest?
-     * @testdox Test JQJobs catches fatal PHP errors during job execution and marks job as failed
-     */
-    function testJqJobsCatchesPHPErrorDuringJob()
-    {
-        // create a queuestore
-        $q = new JQStore_Array();
-        $q->enqueue(new SampleFailJob());
-
-        // Start a worker to run the jobs.
-        $w = new JQWorker($q, array('queueName' => 'test', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
-        $w->start();
-
-        $this->assertEquals(0, $q->count('test', 'queued'));
-        $this->assertEquals(1, $q->count('test', 'failed'));
-    }
-
-    /**
      * WorkerTest?
      * @testdox Worker option exitAfterNJobs: NULL means never exit, positive integer will exit after N jobs
      */
