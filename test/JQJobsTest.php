@@ -405,6 +405,26 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @testdox JQManagedJob::run() will detect signals (via JQWorker_SignalException) and re-raise without affecting job state.
+     */
+    function testSignalDetection()
+    {
+        // setup
+        $q = new JQStore_Array();
+        $mJob = new JQManagedJob($q, new SampleCallbackJob(function() { throw new JQWorker_SignalException(); }));
+        $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
+        $mJob->markJobStarted();
+
+        // run
+        try {
+            $err = $mJob->run($mJob);
+            $this->fail("shouldn't get here");
+        } catch (JQWorker_SignalException $se) {
+            $this->assertEquals($mJob->getStatus(), JQManagedJob::STATUS_RUNNING, "JQManagedJob::run() should leave jobs in running state when signaled.");
+        }
+    }
+
+    /**
      * @dataProvider failedJobDetectionDataProvider
      * @testdox JQManagedJob::run() will gracefully detect and fail a job that
      */
@@ -418,7 +438,8 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
 
         // run
         $err = $mJob->run($mJob);
-        $this->assertEquals($exceptionMessageContains, $err, "JQManagedJob::run() failed to detect {$exceptionMessageContains}");
+        $this->assertEquals(JQManagedJob::STATUS_FAILED, $mJob->getStatus(), "failed job not marked as failed.");
+        $this->assertContains($exceptionMessageContains, $err, "JQManagedJob::run() failed to detect {$exceptionMessageContains}");
     }
     function failedJobDetectionDataProvider()
     {
@@ -432,9 +453,21 @@ class JQJobsTest extends PHPUnit_Framework_TestCase
             ),
             "triggers an E_USER_ERROR" => array(
                 function() {
-                    trigger_error("E_USER_ERROR", E_USER_ERROR);
+                    trigger_error("Testing E_USER_ERROR", E_USER_ERROR);
                 },
-                'E_USER_ERROR'
+                'Testing E_USER_ERROR'
+            ),
+            "returns an error string" => array(
+                function() {
+                    return "must return a job status";
+                },
+                'Invalid return value'
+            ),
+            "returns disposition failed" => array(
+                function() {
+                    return JQManagedJob::STATUS_FAILED;
+                },
+                'Invalid return value'
             ),
         );
     }

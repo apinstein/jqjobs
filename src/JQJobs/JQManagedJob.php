@@ -614,6 +614,7 @@ final class JQManagedJob
      * Run the job.
      *
      * @return mixed Error from run; NULL if no error, a string message if there was an error.
+     * @throw JQWorker_SignalException is the only exception that is re-thrown from here.
      * @see JQJob
      */
     public function run(JQManagedJob $job)
@@ -628,6 +629,16 @@ final class JQManagedJob
         $err = NULL;
         try {
             $disposition = ErrorManager::wrap(array($this->job, 'run'), array($this), array($this, 'errorHandlerFailJob'));
+            switch ($disposition) {
+                case self::STATUS_COMPLETED:
+                    $this->markJobComplete();
+                    break;
+                case self::STATUS_WAIT_ASYNC:
+                    $this->markJobWaitAsync();
+                    break;
+                default:
+                    throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->run(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
+            }
         } catch (JQWorker_SignalException $e) {
             // NOTE: a signal interrupts any line of code; from the try/catch above thru the cleanup code below
             // we throw here so that the same workflow can be used for errors in the try/catch and outsie of it
@@ -635,21 +646,7 @@ final class JQManagedJob
             throw $e;
         } catch (Exception $e) {
             $err = $e->getMessage();
-            $disposition = self::STATUS_FAILED;
-        }
-
-        switch ($disposition) {
-            case self::STATUS_COMPLETED:
-                $this->markJobComplete();
-                break;
-            case self::STATUS_WAIT_ASYNC:
-                $this->markJobWaitAsync();
-                break;
-            case self::STATUS_FAILED:
-                $this->markJobFailed($err);
-                break;
-            default:
-                throw new Exception("Invalid return value " . var_export($disposition, true) . " from job->run(). Return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.");
+            $this->markJobFailed($err);
         }
 
         return $err;
