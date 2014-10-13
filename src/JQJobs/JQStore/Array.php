@@ -104,7 +104,6 @@ class JQStore_Array implements JQStore
     }
     public function clearMutex($jobId)
     {
-        if (!$this->mutexInUse) throw new Exception("No mutex.");
         $this->mutexInUse = false;
     }
     public function getByCoalesceId($coalesceId)
