@@ -81,9 +81,10 @@ interface JQStore
      * NOTE: Some backends may not support per-job mutexes; in that case they may not allow you to lock more than one job at a time in the same process.
      *
      * @param string JobId.
-     * @return object JQStoreManagedJob, or NULL if not found.
-     * @throws JQStore_JobIsLockedException if lock cannot be obtained.
-     * @throws object JQStore_JobNotFoundException
+     * @return object JQManagedJob If there is no exception thrown; the returned object will always be valid.
+     * @throws object JQStore_JobIsLockedException if already locked
+     * @throws object JQStore_JobNotFoundException if job doesn't exist (and NO LOCKS will be left open)
+     * @todo Refactor so that getWithMutex() returns a LOCK object (such that locking isn't just a side effect) or refactor to "doWhileLocked"
      */
     function getWithMutex($jobId);
 

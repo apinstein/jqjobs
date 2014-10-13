@@ -206,6 +206,10 @@ class JQStore_Propel implements JQStore
         return call_user_func(array("{$this->propelClassName}Peer", 'doSelect'), $c, $this->con);
     }
 
+    /**
+     * @param string The ID of the job to get.
+     * @throws JQStore_JobIsLockedException
+     */
     private function getDbJob($jobId)
     {
         // always load job from DB... due to the crazy re-entrancy issues due to signal handling, it's best to never trust the Propel cache.
@@ -245,9 +249,16 @@ class JQStore_Propel implements JQStore
         $jobId = (int) $jobId;  // sql injection preventer
         $sql = "select {$this->options['jobIdColName']} from {$this->options['tableName']} where {$this->options['jobIdColName']} = {$jobId} for update";
         $this->con->beginTransaction();
-        $this->con->query($sql);
 
+        // lock it!
+        $stmt = $this->con->query($sql);
         $this->mutexInUse = true;
+
+        if ($stmt->rowCount() !== 1)
+        {
+            $this->clearMutex($jobId);
+            throw new JQStore_JobNotFoundException();
+        }
 
         // fetch job
         return $this->get($jobId);
@@ -255,7 +266,8 @@ class JQStore_Propel implements JQStore
 
     public function clearMutex($jobId)
     {
-        if (!$this->mutexInUse) throw new Exception("No mutex.");
+        if (!$this->mutexInUse) return; // nothing to do!
+
         $this->con->commit();
         $this->mutexInUse = false;
     }

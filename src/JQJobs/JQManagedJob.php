@@ -429,6 +429,10 @@ final class JQManagedJob
     }
 
     /**
+     * Objects that enter wait_async need to be "resolved" at some future time through this function.
+     *
+     * The JQJob's resolveWaitAsyncJob($arg1, $arg2, ...) function should throw on error, or return one of JQManagedJob::STATUS_COMPLETED, JQManagedJob::STATUS_WAIT_ASYNC, or JQManagedJob::STATUS_FAILED.
+     *
      * @param object JQStore
      * @param string The jobId
      * @param mixed The data/payload to report to the job's resolveWaitAsyncJob() method..
@@ -454,7 +458,7 @@ final class JQManagedJob
             // allow the job to process the async data update
             $err = NULL;
             try {
-                $disposition = ErrorManager::wrap(array($mJob->getJob(), 'resolveWaitAsyncJob'), array($data), array($mJob, 'errorHandlerFailJob'));
+                $disposition = call_user_func_array(array($mJob->getJob(), 'resolveWaitAsyncJob'), array($data));
             } catch (Exception $e) {
                 if ($convertExceptionToFailure)
                 {

@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__FILE__) . '/../src/JQJobs/JQJobs.php';
+const JQJOB_ID_DOES_NOT_EXIST = 999999;
 
 $composerAutoloader = dirname(__FILE__) . '/../vendor/autoload.php';
 if (file_exists($composerAutoloader))

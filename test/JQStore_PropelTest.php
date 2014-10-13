@@ -102,4 +102,18 @@ class JQStore_PropelTest extends JQStore_AllTest
         // cleanup
         $q->delete($mJob);
     }
+
+    /**
+     * @testdox JQStore_Propel::getWithMutex() will not leave any DB locks open if job not found
+     */
+    function testGetJobWithMutexInCaseOfMissingJobDoesNotLeaveOpenDBTransaction()
+    {
+        $baselineTxCount = $this->con->getNestedTransactionCount();
+        try {
+            $mJob = $this->jqStore->getWithMutex(1000); // some non-existant job id
+        } catch (JQStore_JobNotFoundException $e) {
+            $this->assertEquals($baselineTxCount, $this->con->getNestedTransactionCount());
+        }
+    }
+
 }

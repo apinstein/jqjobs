@@ -26,7 +26,10 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         return $jobIdsByIndex;
     }
 
-    function testGetJobWithoutMutex()
+    /**
+     * @testdox JQStore::get()
+     */
+    function testGetJob()
     {
         $jobsById = $this->setup10SampleJobs();
 
@@ -36,6 +39,29 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         }
     }
 
+    /**
+     * @testdox JQStore::getWithMutex() returns a JQManagedJob
+     */
+    function testGetJobWithMutexReturnsJQManagedJob()
+    {
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
+        $jobId = current($jobIdsByIndex);
+        $j = $this->jqStore->getWithMutex($jobId);
+        $this->assertTrue($j instanceof JQManagedJob);
+    }
+
+    /**
+     * @testdox JQStore::getWithMutex() throws JQStore_JobNotFoundException if the mutex cannot be acquired due to missing job.
+     */
+    function testGetJobWithMutexInCaseOfMissingJob()
+    {
+        $this->setExpectedException('JQStore_JobNotFoundException');
+        $mJob = $this->jqStore->getWithMutex(JQJOB_ID_DOES_NOT_EXIST); // some non-existant job id
+    }
+
+    /**
+     * @testdox JQStore::getWithMutex() throws JQStore_JobIsLockedException if job already locked
+     */
     function testGetJobWithMutexLocksJobSuccessfully()
     {
         $jobIdsByIndex = $this->setup10QuietSimpleJobs();
@@ -45,6 +71,9 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $this->jqStore->getWithMutex($jobId);
     }
 
+    /**
+     * @testdox JQStore::clearMutex() removes the mutex
+     */
     function testGetJobWithMutexThenClearThenLock()
     {
         $jobIdsByIndex = $this->setup10QuietSimpleJobs();
@@ -52,6 +81,18 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $this->jqStore->getWithMutex($jobId);
         $this->jqStore->clearMutex($jobId);
         $this->jqStore->getWithMutex($jobId);
+    }
+
+    /**
+     * @testdox JQStore::clearMutex() is idempotent
+     */
+    function testClearMutexIsIdempotent()
+    {
+        $jobIdsByIndex = $this->setup10QuietSimpleJobs();
+        $jobId = current($jobIdsByIndex);
+        $this->jqStore->getWithMutex($jobId);
+        $this->jqStore->clearMutex($jobId);
+        $this->jqStore->clearMutex($jobId);
     }
 
     function testCountJobs()
@@ -174,16 +215,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function testGetNotFound()
     {
         $this->setExpectedException('JQStore_JobNotFoundException');
-        $this->jqStore->get(9999);
-    }
-
-    /**
-     * @testdox getWithMutex() throws JQStore_JobNotFoundException if job cannot be found
-     */
-    function testGetMutexNotFound()
-    {
-        $this->setExpectedException('JQStore_JobNotFoundException');
-        $this->jqStore->getWithMutex(9999);
+        $this->jqStore->get(JQJOB_ID_DOES_NOT_EXIST);
     }
 
     /**
