@@ -736,8 +736,13 @@ class ErrorManager
         }
 
         self::install($shutdownErrorHandler);
-        $ret = call_user_func_array($f, $fArgs ? $fArgs : array());
-        self::remove();
+        try {
+            $ret = call_user_func_array($f, $fArgs ? $fArgs : array());
+            self::remove();
+        } catch (Exception $e) {
+            self::remove();
+            throw $e;
+        }
 
         return $ret;
     }
