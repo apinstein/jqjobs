@@ -15,10 +15,16 @@ dbport=5432
 dbpass=
 # if you change any DB params be sure to switch the dsn in ../../lib/propel/jqjobs-conf.php
 
-# TEST PARAMS
+# TEST CONFIG
+# How many jobs should we run thru?
 queuecount=1000
+# How many concurrent workers should be run for enqueuing/running jobs?
+# NOTE: pg's default num connections is around 20; might need to bump to get this to work at higher numbers
+# max_connections = 20
 concurrency=10
-jobs_per_worker=20
+### END CONFIG
+# how many jobs should the worker run before exiting? (not sure how exactly why this is needed or shouldn't be calculated)
+jobs_per_worker=$(expr $queuecount / $concurrency)
 
 ## INTERNALS ##
 tmp_backup=___temp_backup__
@@ -37,6 +43,7 @@ else
 fi
 
 echo "Provisioning test database"
+${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d postgres -c "SELECT pg_terminate_backend(pg_stat_activity.procpid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '${db}' AND procpid <> pg_backend_pid();"
 ${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d postgres -c "drop database if exists ${db};"
 ${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d postgres -c "create database ${db};"
 ${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "drop table if exists jqstore_managed_job;"
@@ -55,17 +62,39 @@ $PHP_BIN ./vendor/bin/mp -f -V 0
 $PHP_BIN ./vendor/bin/mp -f -x "pgsql:dbname=${db};user=${dbuser};${dbpassdsn};host=${dbhost};port=${dbport}" -m head
 popd
 
+echo
+echo "Starting test... params:"
+echo "Number of jobs:       ${queuecount}"
+echo "Enqueing concurrency: ${concurrency}"
+echo "Worker concurrency:   ${concurrency}"
+echo "Jobs per worker:      ${jobs_per_worker}"
+echo
+
 echo "Starting pg_dump process in background..."
 ${PG_DUMP_BIN} -U ${dbuser} -h ${dbhost} -p ${dbport} ${db} | gzip -9 > $tmp_backup && echo "*********** pg_dump FINISHED ***********" &
 pg_dump_pid=$!
 
+#####
+## For the concurrency test, we will generate $concurrency threads of $jobs_per_worker
 echo "Enqueueing $queuecount jobs... if this is not printing output then it's blocked against pg_dump"
-time ${SEQ_BIN} $(expr $queuecount / $jobs_per_worker) | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${jobs_per_worker} && echo "Enqueueing done!" &
+echo "time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency}"
+      time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} && echo "Enqueueing done!" &
+enqueuePID=$!
+
 echo "Starting $concurrency workers to process jobs. If you don't see output before the pg_dump finishes, then it means the workers are blocked against pg_dump"
-time ${SEQ_BIN} $(expr $queuecount / $jobs_per_worker) | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker} && echo "Job processing done!"
+echo "time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker}"
+      time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker} && echo "Job processing done!" &
+workerPID=$!
+
+wait $enqueuePID $workerPID
+echo
+echo "All concurrency jobs finished..."
+echo
 
 echo "Displaying leftover jobs (should be 0 if concurrency worked correctly)"
 ${PSQL_BIN} -t -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "select count(*) as unprocessed_job_count from jqstore_managed_job;"
 
 kill $pg_dump_pid > /dev/null 2>&1 && echo "Killed still-running pg_dump" || echo "pg_dump already finished"
 rm $tmp_backup
+
+echo "DONE"
