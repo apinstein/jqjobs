@@ -91,18 +91,20 @@ pg_dump_pid=$!
 cat /dev/null > $logfile
 
 echo "Enqueueing $queuecount jobs... if this is not printing output then it's blocked against pg_dump"
-time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile} && echo "Enqueueing done!" &
+time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} sh -c "${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile} || true" && echo "Enqueueing done!" &
 enqueuePID=$!
 
 echo "Starting $concurrency workers to process jobs. If you don't see output before the pg_dump finishes, then it means the workers are blocked against pg_dump"
-time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker} && echo "Job processing done!" &
+time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency sh -c "${PHP_BIN} jq-test-worker.php ${jobs_per_worker} || true" && echo "Job processing done!" &
 workerPID=$!
+pstree $workerPID
+echo WORKERPS $workerPID
 
 wait $enqueuePID $workerPID
 jobsSuccessfullyRun=`wc -l /tmp/jqjobs-concurrency.log | cut -f 1 -d ' '`
 if [[ $jobsSuccessfullyRun -ne $queuecount ]]; then
     echo "Only ${jobsSuccessfullyRun} of ${queuecount} successfully processed. Something probably went wrong."
-    exit 1
+    exit 2
 fi
 echo
 echo "All concurrency jobs finished..."
