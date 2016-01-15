@@ -167,6 +167,7 @@ class JQStore_Propel implements JQStore
                         limit 1
                     for update
                 ";
+            // @TODO -- I don't think we need the `for update` if we lock.
             $stmt = $this->con->query($sql);
             if ($stmt->rowCount() === 1)
             {
