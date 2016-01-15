@@ -1,17 +1,18 @@
 <?php
 
+// jq-test-enqueue.php prefix numToEnqueue
+// Enqueues numToEnqueue jobs with the passed prefix
+
 require_once dirname(__FILE__) . '/../TestCommon.php';
 
-if ($argc !== 3) throw new Exception("Usage: jq-test-enqueue.php jobId numToEnqueue");
-$jobId = (int) $argv[1];
-if ($jobId <= 0) throw new Exception("Pass jobId as only argument. A positive integer.");
+if ($argc !== 3) throw new Exception("Usage: jq-test-enqueue.php prefix numToEnqueue");
+$prefix = trim($argv[1]);
 $numToEnqueue = $argv[2];
 
 $q = getTestJQStore();
-while ($numToEnqueue) {
-    $cJobId = "{$jobId}.{$numToEnqueue}";
+for ($jobSeq = 1; $jobSeq <= $numToEnqueue; $jobSeq++) {
+    $cJobId = "{$prefix}-#{$jobSeq}";
     $q->enqueue(new ConcurrencyTestJob($cJobId));
-    $numToEnqueue--;
     print "Enqueued job {$cJobId}\n";
 }
 
