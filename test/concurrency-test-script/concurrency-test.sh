@@ -17,11 +17,11 @@ dbpass=
 
 # TEST CONFIG
 # How many jobs should we run thru?
-queuecount=1000
+queuecount=500
 # How many concurrent workers should be run for enqueuing/running jobs?
 # NOTE: pg's default num connections is around 20; might need to bump to get this to work at higher numbers
 # max_connections = 20
-concurrency=10
+concurrency=5
 ### END CONFIG
 # how many jobs should the worker run before exiting? (not sure how exactly why this is needed or shouldn't be calculated)
 jobs_per_worker=$(expr $queuecount / $concurrency)
@@ -76,9 +76,14 @@ pg_dump_pid=$!
 
 #####
 ## For the concurrency test, we will generate $concurrency threads of $jobs_per_worker
+
+## Use a tempfile to collate al job runs to ensure that $queuecount jobs were actually created AND processed.
+logfile=/tmp/jqjobs-concurrency.log
+cat /dev/null > $logfile
+
 echo "Enqueueing $queuecount jobs... if this is not printing output then it's blocked against pg_dump"
-echo "time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency}"
-      time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} && echo "Enqueueing done!" &
+echo "time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile}"
+      time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile} && echo "Enqueueing done!" &
 enqueuePID=$!
 
 echo "Starting $concurrency workers to process jobs. If you don't see output before the pg_dump finishes, then it means the workers are blocked against pg_dump"
@@ -87,6 +92,11 @@ echo "time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-
 workerPID=$!
 
 wait $enqueuePID $workerPID
+jobsSuccessfullyRun=`wc -l /tmp/jqjobs-concurrency.log | cut -f 1 -d ' '`
+if [ $jobsSuccessfullyRun -ne $queuecount ]; then
+    echo "Only ${jobsSuccessfullyRun} of ${queuecount} successfully processed. Something probably went wrong."
+    exit 1
+fi
 echo
 echo "All concurrency jobs finished..."
 echo
@@ -97,4 +107,5 @@ ${PSQL_BIN} -t -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "select count(*)
 kill $pg_dump_pid > /dev/null 2>&1 && echo "Killed still-running pg_dump" || echo "pg_dump already finished"
 rm $tmp_backup
 
-echo "DONE"
+echo
+echo "Test complete."

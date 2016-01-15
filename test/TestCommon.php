@@ -88,14 +88,26 @@ class JQTestJob implements JQJob
 class ConcurrencyTestJob extends JQTestJob
 {
     protected $jobId;
-    function __construct($jobid)
+    protected $logfile;
+
+    function __construct($jobid, $logfile = NULL)
     {
         $this->jobId = $jobid;
+        $this->logfile = $logfile;
         parent::__construct( array('queueName' => 'concurrency-test') );
     }
     function run(JQManagedJob $mJob)
     {
         print "running job {$this->jobId}";
+
+        if ($this->logfile)
+        {
+            $h = fopen($this->logfile, 'a');
+            if (!$h) throw new Exception("couldn't open log file.");
+            $bytesWritten = fwrite($h, "{$this->jobId}\n");
+            if ($bytesWritten === false) throw new Exception("couldn't write to log file");
+            fclose($h);
+        }
         return JQManagedJob::STATUS_COMPLETED;
     }
     function description() { return "job {$this->jobId}"; }
