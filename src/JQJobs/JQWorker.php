@@ -45,6 +45,7 @@ class JQWorker
      *                                             an orphaned "running" job. This is a highly undesireable state.
      *                                             DEFAULT: will require 20% of memory limit still available.
      *              - exitIfNoJobs (boolean): Should the worker exit if no jobs remain. DEFAULT: false.
+     *              - exitIfNoJobsCount (int): if exitIfNoJobs is enabled, how many "no jobs" responses are allowed before exiting. DEFAULT 1.
      *              - exitAfterNJobs (int): The worker will exit after N jobs have been processed. Set to NULL to run forever. DEFAULT: NULL.
      *              - adjustPriority (int): An integer value used to adjust the priority (see proc_nice). Postive integers reduce priority. Negative integers increase priority (requires root).
      *                                      A adjustPriority of 10 is reasonable for background processes.
@@ -62,6 +63,7 @@ class JQWorker
                                             'silent'                    => false,
                                             'guaranteeMemoryForJob'     => 0.2 * $this->getMemoryLimitInBytes(),
                                             'exitIfNoJobs'              => false,
+                                            'exitIfNoJobsCount'         => 1,
                                             'exitAfterNJobs'            => NULL,
                                             'adjustPriority'            => NULL,
                                             'gracefulShutdownTimeout'   => 5,
@@ -70,6 +72,7 @@ class JQWorker
                                      $options
                                     );
         $this->pid = getmypid();
+        $this->exitIfNoJobsCount = $this->options['exitIfNoJobsCount']; 
         $this->log("pid = {$this->pid}");
 
         // install signal handlers if possible
@@ -194,9 +197,9 @@ class JQWorker
                 else
                 {
                     $this->log("No jobs available.");
-                    if ($this->options['exitIfNoJobs'])
+                    if ($this->options['exitIfNoJobs'] && --$this->exitIfNoJobsCount === 0)
                     {
-                        $this->log("Exiting since exitIfNoJobs=true");
+                        $this->log("Exiting since exitIfNoJobs=true and experienced {$this->options['exitIfNoJobsCount']} nojobs polls.");
                         break;
                     }
                     else
@@ -224,7 +227,7 @@ class JQWorker
             exit(self::EXIT_CODE_SIGNAL);
         }
 
-        $this->log("Stopping worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));
+        $this->log("Stopping worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']) . " after processing {$this->jobsProcessed} jobs.");
     }
 
     private function getMemoryLimitInBytes()

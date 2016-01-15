@@ -3,8 +3,20 @@
 # This script is a test rig for concurrent insertion of jobs and concurrent worker execution.
 # It also helps test the locking to be sure the queue is uninterrupted by pg_dump (backup).
 # To play with different lock modes, see JQStore_Propel::next()
+#
+# POSTGRES TUNING: (samples below are tested on OS X)
+#
+# Typical installs of PG don't have enough connections to do high concurrency. Try editing postgresql.conf:
+# max_connections = 200
+#
+# Then restart postgres (port unload postgresql91-server; port load postgresql91-server)
+#
+# You will likely need to bump shared memory for that to work
+# sysctl -w kern.sysv.shmmax=16777216 kern.sysv.shmall=8192
+# sysctl -h kern.sysv
 
-set -e # stop on error
+# debugging aids
+# set -e # stop on error -- if your script stops unceremoniously, don't forget this is here!
 # set -x # print each statement before running
 
 ## DB CONFIG
@@ -16,17 +28,16 @@ dbpass=
 # if you change any DB params be sure to switch the dsn in ../../lib/propel/jqjobs-conf.php
 
 # TEST CONFIG
-# How many jobs should we run thru?
-queuecount=500
 # How many concurrent workers should be run for enqueuing/running jobs?
 # NOTE: pg's default num connections is around 20; might need to bump to get this to work at higher numbers
-# max_connections = 20
-concurrency=5
+concurrency=90
+# How many jobs should we run per "thread"?
+jobs_per_worker=10
 ### END CONFIG
-# how many jobs should the worker run before exiting? (not sure how exactly why this is needed or shouldn't be calculated)
-jobs_per_worker=$(expr $queuecount / $concurrency)
 
 ## INTERNALS ##
+logfile=/tmp/jqjobs-concurrency.log
+queuecount=$(expr $jobs_per_worker \* $concurrency)
 tmp_backup=___temp_backup__
 PSQL_BIN=${PSQL_BIN:-/opt/local/lib/postgresql93/bin/psql}
 PG_DUMP_BIN=${PSQL_BIN:-/opt/local/lib/postgresql93/bin/pg_dump}
@@ -64,10 +75,9 @@ popd
 
 echo
 echo "Starting test... params:"
-echo "Number of jobs:       ${queuecount}"
-echo "Enqueing concurrency: ${concurrency}"
-echo "Worker concurrency:   ${concurrency}"
-echo "Jobs per worker:      ${jobs_per_worker}"
+echo "Number of threads:    ${concurrency}"
+echo "Jobs per thread:      ${jobs_per_worker}"
+echo "Total jobs:           ${queuecount}"
 echo
 
 echo "Starting pg_dump process in background..."
@@ -78,22 +88,19 @@ pg_dump_pid=$!
 ## For the concurrency test, we will generate $concurrency threads of $jobs_per_worker
 
 ## Use a tempfile to collate al job runs to ensure that $queuecount jobs were actually created AND processed.
-logfile=/tmp/jqjobs-concurrency.log
 cat /dev/null > $logfile
 
 echo "Enqueueing $queuecount jobs... if this is not printing output then it's blocked against pg_dump"
-echo "time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile}"
-      time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile} && echo "Enqueueing done!" &
+time ${SEQ_BIN} ${jobs_per_worker} | xargs -n 1 -P $concurrency -I {} ${PHP_BIN} jq-test-enqueue.php {} ${concurrency} ${logfile} && echo "Enqueueing done!" &
 enqueuePID=$!
 
 echo "Starting $concurrency workers to process jobs. If you don't see output before the pg_dump finishes, then it means the workers are blocked against pg_dump"
-echo "time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker}"
-      time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker} && echo "Job processing done!" &
+time ${SEQ_BIN} ${concurrency} | xargs -n 1 -P $concurrency ${PHP_BIN} jq-test-worker.php ${jobs_per_worker} && echo "Job processing done!" &
 workerPID=$!
 
 wait $enqueuePID $workerPID
 jobsSuccessfullyRun=`wc -l /tmp/jqjobs-concurrency.log | cut -f 1 -d ' '`
-if [ $jobsSuccessfullyRun -ne $queuecount ]; then
+if [[ $jobsSuccessfullyRun -ne $queuecount ]]; then
     echo "Only ${jobsSuccessfullyRun} of ${queuecount} successfully processed. Something probably went wrong."
     exit 1
 fi
