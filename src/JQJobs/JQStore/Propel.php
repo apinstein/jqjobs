@@ -144,6 +144,8 @@ class JQStore_Propel implements JQStore
             // find "next" job
             $selectColumnsForPropelHydrate = join(',', call_user_func(array("{$this->propelClassName}Peer", 'getFieldNames'), BasePeer::TYPE_COLNAME));
             // options is trusted w/r/t sql-injection
+            $time = time();
+            setproctitle("{$time} select for update");
             $sql = "select
                         {$selectColumnsForPropelHydrate}
                         from {$this->options['tableName']}
@@ -159,6 +161,7 @@ class JQStore_Propel implements JQStore
                     for update
                 ";
             $stmt = $this->con->query($sql);
+            setproctitle("normal");
             if ($stmt->rowCount() === 1)
             {
                 $dbJobRow = $stmt->fetch();

@@ -32,7 +32,7 @@ dbpass=
 # NOTE: pg's default num connections is around 20; might need to bump to get this to work at higher numbers
 concurrency=90
 # How many jobs should we run per "thread"?
-jobs_per_worker=10
+jobs_per_worker=30
 ### END CONFIG
 
 ## INTERNALS ##

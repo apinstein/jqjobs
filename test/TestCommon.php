@@ -108,6 +108,7 @@ class ConcurrencyTestJob extends JQTestJob
             if ($bytesWritten === false) throw new Exception("couldn't write to log file");
             fclose($h);
         }
+        `convert rose: -resize 1000x500 /dev/null`;
         return JQManagedJob::STATUS_COMPLETED;
     }
     function description() { return "job {$this->jobId}"; }
