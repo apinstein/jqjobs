@@ -101,7 +101,7 @@ pstree $workerPID
 echo WORKERPS $workerPID
 
 wait $enqueuePID $workerPID
-jobsSuccessfullyRun=`wc -l /tmp/jqjobs-concurrency.log | cut -f 1 -d ' '`
+jobsSuccessfullyRun=`wc -l ${logfile} | cut -f 1 -d ' '`
 if [[ $jobsSuccessfullyRun -ne $queuecount ]]; then
     echo "Only ${jobsSuccessfullyRun} of ${queuecount} successfully processed. Something probably went wrong."
     exit 2
