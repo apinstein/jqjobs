@@ -146,7 +146,11 @@ class JQWorker
                 $this->memCheck();
                 $this->codeCheck();
 
+                $t0 = microtime(true);
                 $this->currentJob = $this->jqStore->next($this->options['queueName']);
+                $t1 = microtime(true);
+                $nextTime = $t1 - $t0;
+                `echo {$nextTime} >> /tmp/next.log`;
                 if ($this->currentJob)
                 {
                     try {

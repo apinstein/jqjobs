@@ -73,6 +73,13 @@ $PHP_BIN ./vendor/bin/mp -f -V 0
 $PHP_BIN ./vendor/bin/mp -f -x "pgsql:dbname=${db};user=${dbuser};${dbpassdsn};host=${dbhost};port=${dbport}" -m head
 popd
 
+postgres_bloat_rows=5000000
+echo "Adding postgres bloat (${postgres_bloat_rows} rows inserted/deleted before test)..."
+${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "insert into jqstore_managed_job select * from generate_series(1,${postgres_bloat_rows});"
+${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "delete from jqstore_managed_job;"
+${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "vacuum full analyze jqstore_managed_job;"
+
+
 echo
 echo "Starting test... params:"
 echo "Number of threads:    ${concurrency}"
