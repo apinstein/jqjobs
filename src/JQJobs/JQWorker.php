@@ -146,13 +146,19 @@ class JQWorker
                 $this->memCheck();
                 $this->codeCheck();
 
-                $t0 = microtime(true);
+$t0 = microtime(true);
                 $this->currentJob = $this->jqStore->next($this->options['queueName']);
-                $t1 = microtime(true);
-                $nextTime = $t1 - $t0;
-                `echo {$nextTime} >> /tmp/next.log`;
+$t1 = microtime(true);
+$nextTime = $t1 - $t0;
+
                 if ($this->currentJob)
                 {
+$h = fopen('/tmp/next.log', 'a');
+if (!$h) throw new Exception("couldn't open log file.");
+$bytesWritten = fwrite($h, "{$nextTime}\n");
+if ($bytesWritten === false) throw new Exception("couldn't write to log file");
+fclose($h);
+
                     try {
                         $this->logJobStatus($this->currentJob, "Job checked out.");
 

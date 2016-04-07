@@ -18,6 +18,9 @@
 # debugging aids
 # set -e # stop on error -- if your script stops unceremoniously, don't forget this is here!
 # set -x # print each statement before running
+#
+# Testing postgres bloat
+# (n=0; export postgres_bloat_rows=${n} postgres_bloat_vacuum=1; echo "next.time" > /tmp/next.log; sh concurrency-test.sh; wc -l /tmp/next.log /tmp/jqjobs-concurrency.log; mv /tmp/next.log /tmp/next-${postgres_bloat_rows}-bloat-vacuum-${postgres_bloat_vacuum}.log)
 
 ## DB CONFIG
 db=jqjobs_test
@@ -33,6 +36,9 @@ dbpass=
 concurrency=90
 # How many jobs should we run per "thread"?
 jobs_per_worker=10
+# Simulated bloat (from running tons of jobs w/o vacuum full)
+postgres_bloat_rows=${postgres_bloat_rows:-0}
+postgres_bloat_vacuum=${postgres_bloat_vacuum:-0}
 ### END CONFIG
 
 ## INTERNALS ##
@@ -43,6 +49,7 @@ PSQL_BIN=${PSQL_BIN:-/opt/local/lib/postgresql93/bin/psql}
 PG_DUMP_BIN=${PSQL_BIN:-/opt/local/lib/postgresql93/bin/pg_dump}
 SEQ_BIN=${SEQ_BIN:-/opt/local/libexec/gnubin/seq}
 PHP_BIN=${PHP_BIN:-php54}
+
 
 export db dbuser dbhost dbport dbpass
 if [ -n ${dbpass} ]; then
@@ -73,11 +80,21 @@ $PHP_BIN ./vendor/bin/mp -f -V 0
 $PHP_BIN ./vendor/bin/mp -f -x "pgsql:dbname=${db};user=${dbuser};${dbpassdsn};host=${dbhost};port=${dbport}" -m head
 popd
 
-postgres_bloat_rows=5000000
-echo "Adding postgres bloat (${postgres_bloat_rows} rows inserted/deleted before test)..."
-${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "insert into jqstore_managed_job select * from generate_series(1,${postgres_bloat_rows});"
-${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "delete from jqstore_managed_job;"
-${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "vacuum full analyze jqstore_managed_job;"
+echo
+echo
+if [ $postgres_bloat_rows -gt 0 ]; then
+    echo "Simulating postgres bloat (${postgres_bloat_rows} rows inserted/deleted before test)..."
+    ${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "insert into jqstore_managed_job select * from generate_series(1,${postgres_bloat_rows});"
+    ${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "delete from jqstore_managed_job;"
+    if [ $postgres_bloat_vacuum -eq 1 ]; then
+        echo "Running vacuum/analyze after simulated bloat."
+        ${PSQL_BIN} -q -U $dbuser -h ${dbhost} -p ${dbport} -d ${db} -c "vacuum full analyze jqstore_managed_job;"
+    else
+        echo "NOT vacuuming after simulated bloat."
+    fi
+else
+    echo "Not simulating any postgres bloat."
+fi
 
 
 echo
