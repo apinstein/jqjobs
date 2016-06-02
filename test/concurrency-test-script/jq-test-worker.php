@@ -12,7 +12,7 @@ $w = new JQWorker($q, array(
     'queueName'         => 'concurrency-test',
     'verbose'           => true,
     'exitIfNoJobs'      => true,
-    'exitIfNoJobsCount' => 3,                       // need enough chances to find add'l jobs if enqueing hasn't finished
+    'exitIfNoJobsCount' => 10,                       // need enough chances to find add'l jobs if enqueing hasn't finished
     'wakeupEvery'       => 2,
     'exitAfterNJobs'    => $exitAfterNJobs
 ));

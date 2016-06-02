@@ -96,6 +96,7 @@ class ConcurrencyTestJob extends JQTestJob
         $this->logfile = $logfile;
         parent::__construct( array('queueName' => 'concurrency-test') );
     }
+    //function coalesceId() { return $this->jobId; }
     function run(JQManagedJob $mJob)
     {
         print "running job {$this->jobId}";

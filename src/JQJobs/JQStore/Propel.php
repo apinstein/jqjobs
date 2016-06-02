@@ -57,6 +57,7 @@ class JQStore_Propel implements JQStore
  
         $this->con->beginTransaction();
         try {
+$t0 = microtime(true);
             // look for coalesceId collision
             $coalesceId = $job->coalesceId();
             $mJob = $this->existsJobForCoalesceId($job->coalesceId());
@@ -75,6 +76,13 @@ class JQStore_Propel implements JQStore
             }
  
             $this->con->commit();
+$t1 = microtime(true);
+$enqueueTime = $t1 - $t0;
+$h = fopen('/tmp/enqueue.log', 'a');
+if (!$h) throw new Exception("couldn't open log file.");
+$bytesWritten = fwrite($h, "{$enqueueTime}\n");
+if ($bytesWritten === false) throw new Exception("couldn't write to log file");
+fclose($h);
         } catch (Exception $e) {
             $this->con->rollback();
             throw $e;
