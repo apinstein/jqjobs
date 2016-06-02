@@ -50,7 +50,7 @@ final class JQManagedJob
     protected $endDts;
     /**
      * Status state transition diagram:
-     * 
+     *
      * STATUS_UNQUEUED -+-> STATUS_QUEUED -> STATUS_RUNNING -> [optional] STATUS_WAIT_ASYNC --+-> STATUS_COMPLETED
      *                  ^                                                                     |
      *                  \--- STATUS_QUEUED (retry) ------------------------------------------<+
@@ -369,6 +369,11 @@ final class JQManagedJob
         return $this->maxAttempts;
     }
 
+    public function getCreationDts()
+    {
+        return $this->creationDts;
+    }
+
     public function getStartDts()
     {
         return $this->startDts;
@@ -419,7 +424,7 @@ final class JQManagedJob
 
     /**
      * Mark the job as waiting -- used for jobs that call out to asynchronous collaborators.
-     * 
+     *
      * When the job finishes, it should call markJobComplete() or markJobFailed().
      */
     private function markJobWaitAsync()
@@ -437,7 +442,7 @@ final class JQManagedJob
      * @param string The jobId
      * @param mixed The data/payload to report to the job's resolveWaitAsyncJob() method..
      * @param boolean TRUE to convert exceptions thrown during resolveWaitAsyncJob() to FAILURE (mark job failed).
-     *                FALSE to re-throw exceptions. Useful for a webhook to re-try Exceptional failures. 
+     *                FALSE to re-throw exceptions. Useful for a webhook to re-try Exceptional failures.
      *                Default FALSE.
      * @throws object JQStore_JobNotFoundException
      * @throws object Exception Unhandled exceptions.

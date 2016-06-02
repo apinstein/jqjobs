@@ -54,26 +54,26 @@ class JQStore_Propel implements JQStore
     public function enqueue(JQJob $job)
     {
         $mJob = NULL;
- 
+
         $this->con->beginTransaction();
         try {
             // look for coalesceId collision
             $coalesceId = $job->coalesceId();
             $mJob = $this->existsJobForCoalesceId($job->coalesceId());
- 
+
             if (!$mJob)
             {
                 // create a new job
                 $mJob = new JQManagedJob($this, $job);
-                
+
                 $mJob->setStatus(JQManagedJob::STATUS_QUEUED);
                 $dbJob = new $this->propelClassName;
                 $dbJob->fromArray($mJob->toArray($this->options['toArrayOptions']), BasePeer::TYPE_STUDLYPHPNAME);
                 $dbJob->save($this->con);
- 
+
                 $mJob->setJobId($dbJob->getJobId());
             }
- 
+
             $this->con->commit();
         } catch (Exception $e) {
             $this->con->rollback();
@@ -82,7 +82,7 @@ class JQStore_Propel implements JQStore
 
         return $mJob;
     }
-    
+
     function detectHungJobs()
     {
         // optimized query to select only possibly hung jobs...
