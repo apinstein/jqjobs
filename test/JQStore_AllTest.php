@@ -153,6 +153,11 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         {
             $mJob->markJobStarted(new DateTime($startDts));
         }
+        else if ($currentStatus === JQManagedJob::STATUS_WAIT_ASYNC)
+        {
+            $mJob->markJobStarted(new DateTime($startDts));
+            JQJobs_TestHelper::moveJobToStatus($mJob, $currentStatus);
+        }
         else
         {
             JQJobs_TestHelper::moveJobToStatus($mJob, $currentStatus);
@@ -187,24 +192,30 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
             //            maxRuntimeSeconds     current state                       start dts (relative to now)         expectedResult
             'maxRuntimeSeconds of NULL means never expire' =>
                     array(NULL,                 JQManagedJob::STATUS_RUNNING,       '-1 year',                          false),
-            #'maxRuntimeSeconds does not apply to STATUS_UNQUEUED' => 
+            #'maxRuntimeSeconds does not apply to STATUS_UNQUEUED' =>
             #array(10,                   JQManagedJob::STATUS_UNQUEUED,      '-1 year',                          false),
             'maxRuntimeSeconds does not apply to STATUS_QUEUED' =>
                     array(10,                   JQManagedJob::STATUS_QUEUED,        '-1 year',                          false),
-            'maxRuntimeSeconds does not apply to STATUS_WAIT_ASYNC' =>
-                    array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-1 year',                          false),
             'maxRuntimeSeconds does not apply to STATUS_COMPLETED' =>
                     array(10,                   JQManagedJob::STATUS_COMPLETED,     '-1 year',                          false),
-            'maxRuntimeSeconds does not apply to STATUS_FAILED' => 
+            'maxRuntimeSeconds does not apply to STATUS_FAILED' =>
                     array(10,                   JQManagedJob::STATUS_FAILED,        '-1 year',                          false),
-            'very expired job is past maxRuntimeSeconds' => 
+            'STATUS_RUNNING job- very expired job is past maxRuntimeSeconds' =>
                     array(10,                   JQManagedJob::STATUS_RUNNING,       '-1 year',                          true),
-            'expired by 1 second is past maxRuntimeSeconds' => 
+            'STATUS_RUNNING job - expired by 1 second is past maxRuntimeSeconds' =>
                     array(10,                   JQManagedJob::STATUS_RUNNING,       '-11 seconds',                      true),
-            'at expiration is NOT past maxRuntimeSeconds' => 
+            'STATUS_RUNNING job - at expiration is NOT past maxRuntimeSeconds' =>
                     array(10,                   JQManagedJob::STATUS_RUNNING,       '-10 seconds',                      false),
-            'before expiration is NOT past maxRuntimeSeconds' => 
+            'STATUS_RUNNING job - before expiration is NOT past maxRuntimeSeconds' =>
                     array(10,                   JQManagedJob::STATUS_RUNNING,       '-9 seconds',                       false),
+            'STATUS_WAIT_ASYNC job - very expired job is past maxRuntimeSeconds' =>
+                    array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-1 year',                          true),
+            'STATUS_WAIT_ASYNC job - expired by 1 second is past maxRuntimeSeconds' =>
+                    array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-11 seconds',                      true),
+            'STATUS_WAIT_ASYNC job - at expiration is NOT past maxRuntimeSeconds' =>
+                    array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-10 seconds',                      false),
+            'STATUS_WAIT_ASYNC job - before expiration is NOT past maxRuntimeSeconds' =>
+                    array(10,                   JQManagedJob::STATUS_WAIT_ASYNC,    '-9 seconds',                       false),
         );
     }
 

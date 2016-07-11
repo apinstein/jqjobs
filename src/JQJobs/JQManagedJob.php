@@ -391,7 +391,7 @@ final class JQManagedJob
 
     public function isPastMaxRuntimeSeconds()
     {
-        if ($this->getStatus() !== JQManagedJob::STATUS_RUNNING and $this->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
+        if ($this->getStatus() !== JQManagedJob::STATUS_RUNNING && $this->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
         {
             return false;
         }
