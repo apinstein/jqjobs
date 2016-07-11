@@ -391,7 +391,10 @@ final class JQManagedJob
 
     public function isPastMaxRuntimeSeconds()
     {
-        if ($this->getStatus() !== JQManagedJob::STATUS_RUNNING) return false;
+        if ($this->getStatus() !== JQManagedJob::STATUS_RUNNING && $this->getStatus() !== JQManagedJob::STATUS_WAIT_ASYNC)
+        {
+            return false;
+        }
         if ($this->maxRuntimeSeconds === NULL) return false;
 
         $startDtsEpoch = $this->getStartDts()->format('U');
