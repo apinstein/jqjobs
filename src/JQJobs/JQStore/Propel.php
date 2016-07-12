@@ -87,7 +87,12 @@ class JQStore_Propel implements JQStore
     {
         // optimized query to select only possibly hung jobs...
         $c = new Criteria;
-        $c->add($this->options['jobStatusColName'], JQManagedJob::STATUS_RUNNING);
+
+        $cStatusRunning   = $c->getNewCriterion($this->options['jobStatusColName'], JQManagedJob::STATUS_RUNNING);
+        $cStatusWaitAsync = $c->getNewCriterion($this->options['jobStatusColName'], JQManagedJob::STATUS_WAIT_ASYNC);
+        $cStatusRunning->addOr($cStatusWaitAsync);
+
+        $c->add($cStatusRunning);
         $c->add($this->options['jobMaxRuntimeSecondsColName'], NULL, Criteria::ISNOTNULL);
         $c->add($this->options['jobMaxRuntimeSecondsColName'], "{$this->options['jobStartDtsColName']} + ({$this->options['jobMaxRuntimeSecondsColName']}||' seconds')::interval < now()", Criteria::CUSTOM);
         $possiblyHungJobs = call_user_func(array("{$this->propelClassName}Peer", 'doSelect'), $c, $this->con);
@@ -100,6 +105,8 @@ class JQStore_Propel implements JQStore
                 if ($mJob->isPastMaxRuntimeSeconds())   // verify with the JQJobs calc
                 {
                     $mJob->retry(true);
+                    $runningTime = time() - $mJob->getStartDts()->format('U');
+                    print("Retrying job:{$mJob->getJobId()} after running for: {$runningTime} seconds job maxRunTimeSeconds: {$mJob->getMaxRuntimeSeconds()}\n");
                 }
                 $this->clearMutex($mJob->getJobId());
                 $this->con->commit();
