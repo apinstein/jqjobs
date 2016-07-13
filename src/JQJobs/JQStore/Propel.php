@@ -106,7 +106,10 @@ class JQStore_Propel implements JQStore
                 {
                     $mJob->retry(true);
                     $runningTime = time() - $mJob->getStartDts()->format('U');
-                    print("Retrying job:{$mJob->getJobId()} after running for: {$runningTime} seconds job maxRunTimeSeconds: {$mJob->getMaxRuntimeSeconds()}\n");
+                    if (!defined('RUNNING_TESTS'))
+                    {
+                        print("Retrying job:{$mJob->getJobId()} after running for: {$runningTime} seconds job maxRunTimeSeconds: {$mJob->getMaxRuntimeSeconds()}\n");
+                    }
                 }
                 $this->clearMutex($mJob->getJobId());
                 $this->con->commit();
