@@ -230,7 +230,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @testdox Test Basic JQJobs Processing using JQStore_Propel
+     * @testdox Test Basic JQJobs Processing
      */
     function testJQJobs()
     {
@@ -252,6 +252,75 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(10, $w->jobsProcessed());
         $this->assertEquals(0, $q->count('test'));
+    }
+
+    private function setupOneJobInThreeQueues(JQStore $q)
+    {
+        $this->assertEquals(0, $q->count('test'));
+
+        // Add jobs
+        $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => 'a' ]));
+        $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => 'b' ]));
+        $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => 'c' ]));
+
+        $this->assertEquals(3, $q->count());
+        $this->assertEquals(1, $q->count('a', JQManagedJob::STATUS_QUEUED));
+        $this->assertEquals(1, $q->count('b', JQManagedJob::STATUS_QUEUED));
+        $this->assertEquals(1, $q->count('c', JQManagedJob::STATUS_QUEUED));
+    }
+
+    /**
+     * @testdox Test JQStore->next(NULL) finds next job available on all queues
+     */
+    function testNextWithNoNamedQueues()
+    {
+        $q = $this->jqStore;
+        $this->setupOneJobInThreeQueues($q);
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(3, $w->jobsProcessed());
+        $this->assertEquals(0, $q->count());
+    }
+
+    /**
+     * @testdox Test JQStore->next('a') finds next job available on queue 'a' only
+     */
+    function testNextWithOneNamedQueue()
+    {
+        $q = $this->jqStore;
+        $this->setupOneJobInThreeQueues($q);
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'a', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(1, $w->jobsProcessed());
+        $this->assertEquals(2, $q->count());
+        $this->assertEquals(0, $q->count('a'));
+        $this->assertEquals(1, $q->count('b'));
+        $this->assertEquals(1, $q->count('c'));
+    }
+
+    /**
+     * @testdox Test JQStore->next('a,b') finds next job available on queues 'a' or 'b' 
+     */
+    function testNextWithMultipleNamedQueues()
+    {
+        $q = $this->jqStore;
+        $this->setupOneJobInThreeQueues($q);
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'a,b', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(2, $w->jobsProcessed());
+        $this->assertEquals(1, $q->count());
+        $this->assertEquals(0, $q->count('a'));
+        $this->assertEquals(0, $q->count('b'));
+        $this->assertEquals(1, $q->count('c'));
     }
 
     /**

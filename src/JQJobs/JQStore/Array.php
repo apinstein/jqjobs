@@ -65,13 +65,13 @@ class JQStore_Array implements JQStore
 
     public function next($queueName = NULL)
     {
-        foreach ($this->queue as $dbJob) {
-            if ($dbJob->getStatus() === JQManagedJob::STATUS_QUEUED && $dbJob->getQueueName() === $queueName)
-            {
-                $dbJob->markJobStarted();
-                // no locking needed for in-process queue
-                return $dbJob;
-            }
+        foreach ($this->queue as $mJob) {
+            if ($mJob->getStatus() !== JQManagedJob::STATUS_QUEUED) continue;
+            if (!$mJob->matchesQueueNameFilter($queueName)) continue;
+
+            $mJob->markJobStarted();
+            // no locking needed for in-process queue
+            return $mJob;
         }
         return NULL;
     }
@@ -83,10 +83,10 @@ class JQStore_Array implements JQStore
     public function jobs($queueName = NULL, $status = NULL)
     {
         $jobs = array();
-        foreach ($this->queue as $dbJob) {
-            if ($queueName && $dbJob->getQueueName() !== $queueName) continue;
-            if ($status && $dbJob->getStatus() !== $status) continue;
-            $jobs[] = $dbJob;
+        foreach ($this->queue as $mJob) {
+            if ($queueName && $mJob->getQueueName() !== $queueName) continue;
+            if ($status && $mJob->getStatus() !== $status) continue;
+            $jobs[] = $mJob;
         }
         return $jobs;
     }
@@ -109,8 +109,8 @@ class JQStore_Array implements JQStore
     public function getByCoalesceId($coalesceId)
     {
         // Look for the job
-        foreach ($this->queue as $dbJob) {
-            if ($dbJob->coalesceId() == $coalesceId) return $dbJob;
+        foreach ($this->queue as $mJob) {
+            if ($mJob->coalesceId() == $coalesceId) return $mJob;
         }
 
         // We didn't find a job.
