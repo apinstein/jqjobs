@@ -4,7 +4,7 @@ Features
 
 * Very light-weight and easy-to-use.
 * Supports multiple job types.
-* Supports multiple queues & binding workers to specific queues.
+* Supports multiple queues & binding workers to jobs from a) any queue, b) one or more specific queues.
 * Supports jobs that proxy the work to third-party services. This allows other jobs to be worked on but tracks the status of the third-party job through JQJobs.
 * Tracks job enqueue time, start time, and finish time.
 * Priority scheduling.
@@ -110,3 +110,13 @@ Currently the only db-backed JQStore implememtation is for Propel ORM. All migra
 
 In any case, just ensure that if you are installing/upgrading your JQJobs that you copy and re-sequence the migrations as needed.
 
+
+=======================
+
+Worker/Queue Optimization / Robustness
+
+Each worker is persistent, and works on jobs in one or more named queues. The way you architect your jobs into various queues affects how they will be processed. 
+
+In the idealized case, you would just have many workers which work jobs from any queue. However, for practical reasons, you may want to distribute work amongst multiple queues, for instance when there is a high variability of runtimes and you do not want the risk of "smaller work" getting backlogged behind "larger work". Or alternatively you might have particular work that is flaky and you don't want transient errors with specific queues to affect throughput of other queues. Or you may even have specific environmental requirements for different queues, and thus need certain workers (based on environment) to only attempt work on certain queues.
+
+You can leverage your worker configuration to achieve these goals. We recommend using [Foreman](https://github.com/ddollar/foreman) to coordinate your queue configuration.
