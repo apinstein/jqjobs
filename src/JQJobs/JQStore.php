@@ -12,6 +12,7 @@
  */
 interface JQStore
 {
+
     /**
      * Add a JQJob to the queue.
      *

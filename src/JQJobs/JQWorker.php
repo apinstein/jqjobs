@@ -123,7 +123,7 @@ class JQWorker
      */
     public function start()
     {
-        $this->log("Starting worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));;
+        $this->log("Starting worker process on queue: " . ($this->options['queueName'] === NULL ? JQManagedJob::QUEUE_ANY : $this->options['queueName']));;
 
         if ($this->options['enableJitter'])
         {
@@ -224,7 +224,7 @@ class JQWorker
             exit(self::EXIT_CODE_SIGNAL);
         }
 
-        $this->log("Stopping worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']));
+        $this->log("Stopping worker process on queue: " . ($this->options['queueName'] === NULL ? JQManagedJob::QUEUE_ANY: $this->options['queueName']));
     }
 
     private function getMemoryLimitInBytes()
@@ -385,7 +385,7 @@ class JQWorker
     public function stop()
     {
         $this->okToRun = false;
-        $this->log("Stop requested for worker process on queue: " . ($this->options['queueName'] === NULL ? '(any)' : $this->options['queueName']), true);
+        $this->log("Stop requested for worker process on queue: " . ($this->options['queueName'] === NULL ? JQManagedJob::QUEUE_ANY: $this->options['queueName']), true);
     }
 
     /**
