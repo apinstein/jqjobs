@@ -361,7 +361,7 @@ final class JQManagedJob
 
     public function matchesQueueNameFilter($filterBy)
     {
-        if ($filterBy === NULL or $filterBy === JQManagedJob::QUEUE_ANY)
+        if ($filterBy === NULL || $filterBy === JQManagedJob::QUEUE_ANY)
         {
             return true;
         }
