@@ -113,6 +113,9 @@ class JQStore_Propel implements JQStore
             } catch (Exception $e) {
                 $this->abort();
                 throw $e;
+            } catch(JQStore_JobNotFoundException $e) {
+                // the job already finished, continue the loop
+                continue;
             }
         }
     }
