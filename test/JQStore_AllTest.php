@@ -316,13 +316,15 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function testNextWithNoNamedQueues()
     {
         $q = $this->jqStore;
-        $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1, ['JQStore_AllTest','generateQuietSimpleJob']);
+        $queueSetup = ['a', 'b', 'c'];
+        $jobsPerQueue = 1;
+        $this->setupNQueuesWithMJobs($q, $queueSetup, $jobsPerQueue, ['JQStore_AllTest','generateQuietSimpleJob']);
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
-        $this->assertEquals(3, $w->jobsProcessed());
+        $this->assertEquals($jobsPerQueue * count($queueSetup), $w->jobsProcessed(), 'All jobs on all queues should run.');
         $this->assertEquals(0, $q->count());
     }
 
@@ -334,12 +336,12 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $q = $this->jqStore;
         $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1, ['JQStore_AllTest','generateQuietSimpleJob']);
 
-        // Start a worker to run the jobs.
+        // Start a worker to run the jobs only on 1 queue
         $w = new JQWorker($q, array('queueName' => 'a', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
-        $this->assertEquals(1, $w->jobsProcessed());
-        $this->assertEquals(2, $q->count());
+        $this->assertEquals(1, $w->jobsProcessed(), 'All jobs on 1 queue should run.');
+        $this->assertEquals(2, $q->count(), 'All jobs on other 2 queues should remain.');
         $this->assertEquals(0, $q->count('a'));
         $this->assertEquals(1, $q->count('b'));
         $this->assertEquals(1, $q->count('c'));
@@ -357,8 +359,8 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $w = new JQWorker($q, array('queueName' => 'a,b', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
         $w->start();
 
-        $this->assertEquals(2, $w->jobsProcessed());
-        $this->assertEquals(1, $q->count());
+        $this->assertEquals(2, $w->jobsProcessed(), 'All jobs on 2 queues should run.');
+        $this->assertEquals(1, $q->count(), 'All jobs on third queue should remain.');
         $this->assertEquals(0, $q->count('a'));
         $this->assertEquals(0, $q->count('b'));
         $this->assertEquals(1, $q->count('c'));
