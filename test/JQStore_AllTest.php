@@ -254,19 +254,24 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, $q->count('test'));
     }
 
-    private function setupOneJobInThreeQueues(JQStore $q)
+    /**
+     * Test helper to generate multiple jobs in multiple specifically named queues.
+     */
+    private function setupNQueuesWithMJobs(JQStore $q, $queues, $jobsPerQueue)
     {
-        $this->assertEquals(0, $q->count('test'));
+        $this->assertEquals(0, $q->count());
 
         // Add jobs
-        $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => 'a' ]));
-        $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => 'b' ]));
-        $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => 'c' ]));
+        foreach ($queues as $queueName) {
+            for ($i = 0; $i < $jobsPerQueue; $i++) {
+                $q->enqueue(new QuietSimpleJob(1, [ 'queueName' => $queueName ]));
+            }
+        }
 
-        $this->assertEquals(3, $q->count());
-        $this->assertEquals(1, $q->count('a', JQManagedJob::STATUS_QUEUED));
-        $this->assertEquals(1, $q->count('b', JQManagedJob::STATUS_QUEUED));
-        $this->assertEquals(1, $q->count('c', JQManagedJob::STATUS_QUEUED));
+        $this->assertEquals(count($queues) * $jobsPerQueue, $q->count());
+        foreach ($queues as $queueName) {
+            $this->assertEquals($jobsPerQueue, $q->count($queueName, JQManagedJob::STATUS_QUEUED));
+        }
     }
 
     /**
@@ -275,7 +280,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function testNextWithNoNamedQueues()
     {
         $q = $this->jqStore;
-        $this->setupOneJobInThreeQueues($q);
+        $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1);
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
@@ -291,7 +296,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function testNextWithOneNamedQueue()
     {
         $q = $this->jqStore;
-        $this->setupOneJobInThreeQueues($q);
+        $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1);
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'a', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
@@ -310,7 +315,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     function testNextWithMultipleNamedQueues()
     {
         $q = $this->jqStore;
-        $this->setupOneJobInThreeQueues($q);
+        $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1);
 
         // Start a worker to run the jobs.
         $w = new JQWorker($q, array('queueName' => 'a,b', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
