@@ -110,6 +110,11 @@ class JQStore_Propel implements JQStore
                 }
                 $this->clearMutex($mJob->getJobId());
                 $this->con->commit();
+            } catch(JQStore_JobNotFoundException $e) {
+                // the job already finished, continue the loop
+                print("job not found, continue\n");
+                $this->abort();
+                continue;
             } catch (Exception $e) {
                 $this->abort();
                 throw $e;
