@@ -28,8 +28,11 @@ interface JQStore
      * Get the next job to runin the queue.
      *
      * NOTE: Implementers should make sure that next() has a mutex to be sure that no two workers end up running the same job twice.
+     * NOTE: Implementers should make sure to support the dynamism of the $queueName filter.
      *
-     * @param string Queue name (NULL = default queue)
+     * @param mixed Queue name(s), default NULL (any)
+     *              string NULL, JQStore::QUEUE_ANY, or a specific queue name
+     *              array  Array of strings of names of specific queues to perform work on.
      * @return object JQManagedJob
      * @throws object Exception
      */
