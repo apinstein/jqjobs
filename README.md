@@ -117,6 +117,8 @@ Worker/Queue Optimization / Robustness
 
 Each worker is persistent, and works on jobs in one or more named queues. The way you architect your jobs into various queues affects how they will be processed. 
 
-In the idealized case, you would just have many workers which work jobs from any queue. However, for practical reasons, you may want to distribute work amongst multiple queues, for instance when there is a high variability of runtimes and you do not want the risk of "smaller work" getting backlogged behind "larger work". Or alternatively you might have particular work that is flaky and you don't want transient errors with specific queues to affect throughput of other queues. Or you may even have specific environmental requirements for different queues, and thus need certain workers (based on environment) to only attempt work on certain queues.
+Queueing Theory has a lot to say about how you should reason about your queues and their performance characteristics: https://en.wikipedia.org/wiki/Queueing_theory
+
+In the simplest case, where all jobs have similar execution times and variances and never have technical glitches, you would just have many workers which process jobs from all queues. However, for practical reasons, you may want to distribute work amongst multiple queues, for instance when there is a high variability of runtimes and you do not want the risk of "smaller work" getting backlogged behind "larger work". Or alternatively you might have particular work that is flaky and you don't want transient errors with specific queues to affect throughput of other queues. Or you may even have specific environmental requirements for different queues, and thus need certain workers (based on environment) to only attempt work on certain queues.
 
 You can leverage your worker configuration to achieve these goals. We recommend using [Foreman](https://github.com/ddollar/foreman) to coordinate your queue configuration.
