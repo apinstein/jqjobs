@@ -359,9 +359,30 @@ final class JQManagedJob
         return $this->queueName;
     }
 
+    /**
+     * Determine if the given queue name means "any" queue.
+     *
+     * @param string A queue name.
+     * @return boolean TRUE if $queueName is NULL or JQManagedJob::QUEUE_ANY
+     */
+    public static function isAnyQueue($queueName)
+    {
+        if ($queueName === NULL || $queueName === JQManagedJob::QUEUE_ANY)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Determine if the current job "matches" the given queue name filter.
+     *
+     * @param string The name of a queue: NULL, 'queuename', or 'queuename1,queuename2'
+     * @return boolean TRUE if the current job should be "included" in the given queue name filter expression.
+     */
     public function matchesQueueNameFilter($filterBy)
     {
-        if ($filterBy === NULL || $filterBy === JQManagedJob::QUEUE_ANY)
+        if (self::isAnyQueue($filterBy))
         {
             return true;
         }
