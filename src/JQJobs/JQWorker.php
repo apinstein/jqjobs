@@ -36,7 +36,8 @@ class JQWorker
      *
      * @param object JQStore The backing store to use to get/save jobs.
      * @param array Options:
-     *              - queueName (string): which queue to pull jobs from; ALL queues by default.
+     *              - queueName (mixed): which queue to pull jobs from; ALL queues by default.
+     *                         (string): a comma-separated list of queue names to pull from.
      *              - wakeupEvery (int): the worker sleeps if there are no jobs; it will wake up every N seconds to poll for new jobs.
      *              - verbose (boolean): Output information about each job being run.
      *              - guaranteeMemoryForJob (int): The worker will exit if there is not at least this much memory available before running the next job.
@@ -72,6 +73,8 @@ class JQWorker
         $this->pid = getmypid();
         $this->log("pid = {$this->pid}");
 
+        $this->options['queueName'] = $this->convertCommaSepQueueNameOptionIntoFormatForNext($this->options['queueName']);
+
         // install signal handlers if possible
         declare(ticks = 1);
         if (function_exists('pcntl_signal'))
@@ -82,6 +85,15 @@ class JQWorker
         }
     }
 
+    protected function logQueueStatus($msg, $verboseOnly = false)
+    {
+        $queueNamesForNextJobFilter = is_array($this->options['queueName']) ? join(',', $this->options['queueName']) : $this->options['queueName'];
+        $queueNamesMsg = JQManagedJob::isAnyQueue($queueNamesForNextJobFilter) ? JQManagedJob::QUEUE_ANY : $queueNamesForNextJobFilter;
+
+        $msg = "[queues:{$queueNamesMsg}] {$msg}";
+        $this->log($msg, $verboseOnly);
+    }
+   
     protected function logJobStatus($job, $msg, $verboseOnly = false)
     {
         $msg = "[Job: {$job->getJobId()} {$job->getStatus()} attempt {$job->getAttemptNumber()}/{$job->getMaxAttempts()}] {$msg}";
@@ -117,13 +129,41 @@ class JQWorker
     }
 
     /**
+     * Convert a comma-sep queue name list to an array of strings.
+     *
+     * @param string NULL, 'a', or 'a,b'
+     * @return mixed NULL, JQManagedJob::QUEUE_ANY, or array of strings.
+     */
+    private function convertCommaSepQueueNameOptionIntoFormatForNext($commaSep)
+    {
+        // canonicalize to array
+        $names = explode(',', $commaSep);
+        // remove surrounding whitespace
+        $names = array_map('trim', $names);
+        // collapse dupes
+        $names = array_unique($names);
+        // remove empties
+        $names = array_filter($names);
+
+        // special trick for NO items
+        if (count($names) === 0)
+        {
+            return JQManagedJob::QUEUE_ANY;
+        }
+        else
+        {
+            return $names;
+        }
+    }
+
+    /**
      * Starts the worker process.
      *
      * Blocks until the worker exists.
      */
     public function start()
     {
-        $this->log("Starting worker process on queue: " . ($this->options['queueName'] === NULL ? JQManagedJob::QUEUE_ANY : $this->options['queueName']));;
+        $this->logQueueStatus("Starting worker process.");
 
         if ($this->options['enableJitter'])
         {
@@ -224,7 +264,7 @@ class JQWorker
             exit(self::EXIT_CODE_SIGNAL);
         }
 
-        $this->log("Stopping worker process on queue: " . ($this->options['queueName'] === NULL ? JQManagedJob::QUEUE_ANY: $this->options['queueName']));
+        $this->logQueueStatus("Stopping worker process.");
     }
 
     private function getMemoryLimitInBytes()
@@ -385,7 +425,7 @@ class JQWorker
     public function stop()
     {
         $this->okToRun = false;
-        $this->log("Stop requested for worker process on queue: " . ($this->options['queueName'] === NULL ? JQManagedJob::QUEUE_ANY: $this->options['queueName']), true);
+        $this->logQueueStatus("Stop requested for worker process", true);
     }
 
     /**

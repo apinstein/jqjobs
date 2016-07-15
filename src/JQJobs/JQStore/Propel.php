@@ -164,10 +164,9 @@ class JQStore_Propel implements JQStore
             }
             else
             {
-                $queueNamesOfInterest = explode(',', $queueName);
                 $queueNamesOfInterest = array_map(function($i) {
                     return "'" . pg_escape_string($i) . "'";
-                }, $queueNamesOfInterest);
+                }, $queueName);
                 $queueNameConstraint = " AND {$this->options['jobQueueNameColName']} IN (" . join(',', $queueNamesOfInterest) . ")";
             }
             // options is trusted w/r/t sql-injection

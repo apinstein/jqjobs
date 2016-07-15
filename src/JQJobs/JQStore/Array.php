@@ -63,11 +63,36 @@ class JQStore_Array implements JQStore
         return NULL;
     }
 
+    /**
+     * Determine if the given job "matches" the given queue name filter.
+     *
+     * @param JQManagedJob The job in question.
+     * @param mixed Queue name(s), default NULL (any)
+     *              string NULL, JQStore::QUEUE_ANY, or a specific queue name
+     *              array  Array of strings of names of specific queues to perform work on.
+     * @return boolean TRUE if the current job should be "included" in the given queue name filter expression.
+     */
+    public function matchesQueueNameFilter($mJob, $queueName)
+    {
+        if (JQManagedJob::isAnyQueue($queueName))
+        {
+            return true;
+        }
+
+        if (is_string($queueName))
+        {
+            $queueName = [ $queueName ];
+        }
+        $matches = in_array($mJob->getQueueName(), $queueName);
+
+        return $matches;
+    }
+
     public function next($queueName = NULL)
     {
         foreach ($this->queue as $mJob) {
             if ($mJob->getStatus() !== JQManagedJob::STATUS_QUEUED) continue;
-            if (!$mJob->matchesQueueNameFilter($queueName)) continue;
+            if (!$this->matchesQueueNameFilter($mJob, $queueName)) continue;
 
             $mJob->markJobStarted();
             // no locking needed for in-process queue

@@ -25,10 +25,13 @@ interface JQStore
     function enqueue(JQJob $job);
 
     /**
-     * Get the next job to runin the queue.
+     * Get the next job to run.
      *
-     * NOTE: Implementers should make sure that next() has a mutex to be sure that no two workers end up running the same job twice.
+     * NOTE: Implementers should make sure that next() has a mutex to be sure that no two workers end up running the same job twice (at the same time).
      * NOTE: Implementers should make sure to support the dynamism of the $queueName filter.
+     *
+     * @see JQManagedJob::isAnyQueue()
+     * @see JQManagedJob::matchesQueueNameFilter()
      *
      * @param mixed Queue name(s), default NULL (any)
      *              string NULL, JQStore::QUEUE_ANY, or a specific queue name

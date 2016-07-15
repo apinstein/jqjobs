@@ -374,25 +374,6 @@ final class JQManagedJob
         return false;
     }
 
-    /**
-     * Determine if the current job "matches" the given queue name filter.
-     *
-     * @param string The name of a queue: NULL, 'queuename', or 'queuename1,queuename2'
-     * @return boolean TRUE if the current job should be "included" in the given queue name filter expression.
-     */
-    public function matchesQueueNameFilter($filterBy)
-    {
-        if (self::isAnyQueue($filterBy))
-        {
-            return true;
-        }
-
-        $queueNames = explode(',', $filterBy);
-        $matches = in_array($this->getQueueName(), $queueNames);
-
-        return $matches;
-    }
-
     public function getAttemptNumber()
     {
         return $this->attemptNumber;
