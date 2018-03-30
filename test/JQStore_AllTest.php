@@ -5,24 +5,80 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     // subclasses should configure a JQStore
     protected $jqStore;
 
+    /**
+     * Test helper to generate multiple jobs in multiple specifically named queues.
+     * 
+     * This is a lower-level function; there are some helpers for $jobClassOrGeneratorCallback
+     *
+     * @param JQStore
+     * @param array The queues to create jobs on; ex: [NULL], ['a','b','b']
+     * @param int The number of jobs to create on each entry in $queues
+     * @param mixed Info required to generate new job instances to be enqueued.
+     *              string: The name of a JQJob class
+     *              callable: a callback function of prototype (JQJob) function($queueName, $iteration) where $iteration is 1..$jobsPerQueue
+     */
+    private function setupNQueuesWithMJobs(JQStore $q, $queues, $jobsPerQueue, $jobClassOrGeneratorCallback = NULL)
+    {
+        $enqueuedJobs = [];
+
+        $this->assertEquals(0, $q->count());
+
+        // Add jobs
+        foreach ($queues as $queueName) {
+            for ($i = 0; $i < $jobsPerQueue; $i++) {
+                $jobToEnqueue = NULL;
+                if (is_callable($jobClassOrGeneratorCallback))
+                {
+                    $jobToEnqueue = $jobClassOrGeneratorCallback($queueName, $i);
+                }
+                else if (class_exists($jobClassOrGeneratorCallback))
+                {
+                    $jobToEnqueue = new $jobClassOrGeneratorCallback;
+                }
+                if (!$jobToEnqueue instanceof JQJob)
+                {
+                    throw new Exception("JQJob required.");
+                }
+                $enqueuedJobs[] = $q->enqueue($jobToEnqueue);
+            }
+        }
+
+        $this->assertEquals(count($queues) * $jobsPerQueue, $q->count());
+        foreach ($queues as $queueName) {
+            $this->assertEquals($jobsPerQueue, $q->count($queueName, JQManagedJob::STATUS_QUEUED));
+        }
+
+        return $enqueuedJobs;
+    }
+
+    private static function generateQuietSimpleJob($queueName, $i)
+    {
+        return new QuietSimpleJob($i, [ 'queueName' => $queueName ]);
+    }
+
     private function setup10SampleJobs()
     {
-        // Add jobs
+        $q = $this->jqStore;
         $jobIdsByIndex = array();
-        foreach (range(1,10) as $i) {
-            $job = $this->jqStore->enqueue(new SampleJob());
+
+        $enqueuedJobs = $this->setupNQueuesWithMJobs($q, [NULL], 10, 'SampleJob');
+        foreach ($enqueuedJobs as $job) {
             $jobIdsByIndex[] = $job->getJobId();
         }
+
         return $jobIdsByIndex;
     }
 
     private function setup10QuietSimpleJobs()
     {
+        $q = $this->jqStore;
         $jobIdsByIndex = array();
-        foreach (range(1,10) as $i) {
-            $job = $this->jqStore->enqueue(new QuietSimpleJob($i));
+
+        $enqueuedJobs = $this->setupNQueuesWithMJobs($q, [NULL], 10, ['JQStore_AllTest', 'generateQuietSimpleJob']);
+        foreach ($enqueuedJobs as $job) {
             $jobIdsByIndex[] = $job->getJobId();
         }
+
         return $jobIdsByIndex;
     }
 
@@ -230,7 +286,7 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @testdox Test Basic JQJobs Processing using JQStore_Propel
+     * @testdox Test Basic JQJobs Processing
      */
     function testJQJobs()
     {
@@ -252,6 +308,62 @@ abstract class JQStore_AllTest extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(10, $w->jobsProcessed());
         $this->assertEquals(0, $q->count('test'));
+    }
+
+    /**
+     * @testdox Test JQStore->next(NULL) finds next job available on all queues
+     */
+    function testNextWithNoNamedQueues()
+    {
+        $q = $this->jqStore;
+        $queueSetup = ['a', 'b', 'c'];
+        $jobsPerQueue = 1;
+        $this->setupNQueuesWithMJobs($q, $queueSetup, $jobsPerQueue, ['JQStore_AllTest','generateQuietSimpleJob']);
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals($jobsPerQueue * count($queueSetup), $w->jobsProcessed(), 'All jobs on all queues should run.');
+        $this->assertEquals(0, $q->count());
+    }
+
+    /**
+     * @testdox Test JQStore->next('a') finds next job available on queue 'a' only
+     */
+    function testNextWithOneNamedQueue()
+    {
+        $q = $this->jqStore;
+        $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1, ['JQStore_AllTest','generateQuietSimpleJob']);
+
+        // Start a worker to run the jobs only on 1 queue
+        $w = new JQWorker($q, array('queueName' => 'a', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(1, $w->jobsProcessed(), 'All jobs on 1 queue should run.');
+        $this->assertEquals(2, $q->count(), 'All jobs on other 2 queues should remain.');
+        $this->assertEquals(0, $q->count('a'));
+        $this->assertEquals(1, $q->count('b'));
+        $this->assertEquals(1, $q->count('c'));
+    }
+
+    /**
+     * @testdox Test JQStore->next('a,b') finds next job available on queues 'a' or 'b' 
+     */
+    function testNextWithMultipleNamedQueues()
+    {
+        $q = $this->jqStore;
+        $this->setupNQueuesWithMJobs($q, ['a', 'b', 'c'], 1, ['JQStore_AllTest','generateQuietSimpleJob']);
+
+        // Start a worker to run the jobs.
+        $w = new JQWorker($q, array('queueName' => 'a,b', 'exitIfNoJobs' => true, 'silent' => true, 'enableJitter' => false));
+        $w->start();
+
+        $this->assertEquals(2, $w->jobsProcessed(), 'All jobs on 2 queues should run.');
+        $this->assertEquals(1, $q->count(), 'All jobs on third queue should remain.');
+        $this->assertEquals(0, $q->count('a'));
+        $this->assertEquals(0, $q->count('b'));
+        $this->assertEquals(1, $q->count('c'));
     }
 
     /**

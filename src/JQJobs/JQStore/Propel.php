@@ -106,7 +106,10 @@ class JQStore_Propel implements JQStore
                 {
                     $mJob->retry(true);
                     $runningTime = time() - $mJob->getStartDts()->format('U');
-                    print("Retrying job:{$mJob->getJobId()} after running for: {$runningTime} seconds job maxRunTimeSeconds: {$mJob->getMaxRuntimeSeconds()}\n");
+                    if (!defined('RUNNING_TESTS'))
+                    {
+                        print("Retrying job:{$mJob->getJobId()} after running for: {$runningTime} seconds job maxRunTimeSeconds: {$mJob->getMaxRuntimeSeconds()}\n");
+                    }
                 }
                 $this->clearMutex($mJob->getJobId());
                 $this->con->commit();
@@ -155,6 +158,17 @@ class JQStore_Propel implements JQStore
         try {
             // find "next" job
             $selectColumnsForPropelHydrate = join(',', call_user_func(array("{$this->propelClassName}Peer", 'getFieldNames'), BasePeer::TYPE_COLNAME));
+            if (JQManagedJob::isAnyQueue($queueName))
+            {
+                $queueNameConstraint = NULL;
+            }
+            else
+            {
+                $queueNamesOfInterest = array_map(function($i) {
+                    return "'" . pg_escape_string($i) . "'";
+                }, $queueName);
+                $queueNameConstraint = " AND {$this->options['jobQueueNameColName']} IN (" . join(',', $queueNamesOfInterest) . ")";
+            }
             // options is trusted w/r/t sql-injection
             $sql = "select
                         {$selectColumnsForPropelHydrate}
@@ -162,7 +176,7 @@ class JQStore_Propel implements JQStore
                         where
                             {$this->options['jobStatusColName']}  = '" . JQManagedJob::STATUS_QUEUED . "'
                             AND ({$this->options['jobStartDtsColName']} IS NULL OR {$this->options['jobStartDtsColName']} < now())
-                            " . ($queueName ? "AND {$this->options['jobQueueNameColName']} = '" . pg_escape_string($queueName) . "'" : NULL) . "
+                            {$queueNameConstraint}
                         order by
                             {$this->options['jobPriorityColName']} desc,
                             coalesce(now(), {$this->options['jobStartDtsColName']}) asc,

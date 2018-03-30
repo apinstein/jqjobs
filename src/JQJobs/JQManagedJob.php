@@ -32,6 +32,11 @@ final class JQManagedJob
     const STATUS_COMPLETED      = 'completed';
     const STATUS_FAILED         = 'failed';
 
+    /**
+     * @const Placeholder for anytime code is interested in a job on any queue.
+     */
+    const QUEUE_ANY = '(any)';
+
     // don't bump maxAttempts during mulligans if maxAttempts >= MULLIGAN_MAX_ATTEMPTS
     const MULLIGAN_MAX_ATTEMPTS = 20;
 
@@ -352,6 +357,21 @@ final class JQManagedJob
     public function getQueueName()
     {
         return $this->queueName;
+    }
+
+    /**
+     * Determine if the given queue name means "any" queue.
+     *
+     * @param string A queue name.
+     * @return boolean TRUE if $queueName is NULL or JQManagedJob::QUEUE_ANY
+     */
+    public static function isAnyQueue($queueName)
+    {
+        if ($queueName === NULL || $queueName === JQManagedJob::QUEUE_ANY)
+        {
+            return true;
+        }
+        return false;
     }
 
     public function getAttemptNumber()

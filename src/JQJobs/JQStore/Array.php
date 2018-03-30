@@ -63,15 +63,40 @@ class JQStore_Array implements JQStore
         return NULL;
     }
 
+    /**
+     * Determine if the given job "matches" the given queue name filter.
+     *
+     * @param JQManagedJob The job in question.
+     * @param mixed Queue name(s), default NULL (any)
+     *              string NULL, JQStore::QUEUE_ANY, or a specific queue name
+     *              array  Array of strings of names of specific queues to perform work on.
+     * @return boolean TRUE if the current job should be "included" in the given queue name filter expression.
+     */
+    public function matchesQueueNameFilter($mJob, $queueName)
+    {
+        if (JQManagedJob::isAnyQueue($queueName))
+        {
+            return true;
+        }
+
+        if (is_string($queueName))
+        {
+            $queueName = [ $queueName ];
+        }
+        $matches = in_array($mJob->getQueueName(), $queueName);
+
+        return $matches;
+    }
+
     public function next($queueName = NULL)
     {
-        foreach ($this->queue as $dbJob) {
-            if ($dbJob->getStatus() === JQManagedJob::STATUS_QUEUED && $dbJob->getQueueName() === $queueName)
-            {
-                $dbJob->markJobStarted();
-                // no locking needed for in-process queue
-                return $dbJob;
-            }
+        foreach ($this->queue as $mJob) {
+            if ($mJob->getStatus() !== JQManagedJob::STATUS_QUEUED) continue;
+            if (!$this->matchesQueueNameFilter($mJob, $queueName)) continue;
+
+            $mJob->markJobStarted();
+            // no locking needed for in-process queue
+            return $mJob;
         }
         return NULL;
     }
@@ -83,10 +108,10 @@ class JQStore_Array implements JQStore
     public function jobs($queueName = NULL, $status = NULL)
     {
         $jobs = array();
-        foreach ($this->queue as $dbJob) {
-            if ($queueName && $dbJob->getQueueName() !== $queueName) continue;
-            if ($status && $dbJob->getStatus() !== $status) continue;
-            $jobs[] = $dbJob;
+        foreach ($this->queue as $mJob) {
+            if ($queueName && $mJob->getQueueName() !== $queueName) continue;
+            if ($status && $mJob->getStatus() !== $status) continue;
+            $jobs[] = $mJob;
         }
         return $jobs;
     }
@@ -109,8 +134,8 @@ class JQStore_Array implements JQStore
     public function getByCoalesceId($coalesceId)
     {
         // Look for the job
-        foreach ($this->queue as $dbJob) {
-            if ($dbJob->coalesceId() == $coalesceId) return $dbJob;
+        foreach ($this->queue as $mJob) {
+            if ($mJob->coalesceId() == $coalesceId) return $mJob;
         }
 
         // We didn't find a job.
