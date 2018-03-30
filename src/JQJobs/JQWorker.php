@@ -233,6 +233,7 @@ class JQWorker
         if ($val == -1) { $val = '512M'; }
 
         $last = strtolower($val[strlen($val)-1]);
+        $val = intval($val);
         switch($last) {
             case 'g':
                 $val *= 1024;
